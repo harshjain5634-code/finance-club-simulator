@@ -1,5 +1,6 @@
 import {
   ArrowLeftRight,
+  BookOpen,
   BriefcaseBusiness,
   ChartCandlestick,
   ClipboardList,
@@ -25,15 +26,20 @@ export function participantNav(code: string): NavGroup[] {
   const base = `/event/${code}`;
   return [
     {
-      label: "Terminal",
       items: [
         { label: "Dashboard", href: `${base}/dashboard`, icon: LayoutDashboard },
         { label: "Markets", href: `${base}/markets`, icon: ChartCandlestick },
-        { label: "Portfolio", href: `${base}/portfolio`, icon: BriefcaseBusiness },
         { label: "Trade", href: `${base}/trade`, icon: ArrowLeftRight, badgeKey: "incoming" },
-        { label: "Transactions", href: `${base}/transactions`, icon: ReceiptText },
+        { label: "Portfolio", href: `${base}/portfolio`, icon: BriefcaseBusiness },
         { label: "News", href: `${base}/news`, icon: Newspaper, badgeKey: "news" },
         { label: "Leaderboard", href: `${base}/leaderboard`, icon: Medal },
+      ],
+    },
+    {
+      label: "More",
+      items: [
+        { label: "Transactions", href: `${base}/transactions`, icon: ReceiptText },
+        { label: "Rules", href: `${base}/rules`, icon: BookOpen },
       ],
     },
   ];
@@ -42,10 +48,10 @@ export function participantNav(code: string): NavGroup[] {
 export function participantTitle(pathname: string, code: string): string {
   const base = `/event/${code}`;
   if (pathname.startsWith(`${base}/markets/`)) return "Stock detail";
-  const item = participantNav(code)[0].items.find((i) => pathname.startsWith(i.href));
-  if (item) return item.label;
-  if (pathname.startsWith(`${base}/rules`)) return "Rules";
-  return "Dashboard";
+  const item = participantNav(code)
+    .flatMap((group) => group.items)
+    .find((i) => pathname.startsWith(i.href));
+  return item?.label ?? "Dashboard";
 }
 
 export function hostNav(eventId: string): NavGroup[] {

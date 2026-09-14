@@ -1,202 +1,220 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, Inbox, Plus } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Inbox } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Delta } from "@/components/ui/delta";
-import { InlineBanner, ProgressBar } from "@/components/ui/misc";
+import { ProgressBar } from "@/components/ui/misc";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LatestNewsCard } from "@/components/market/news-modules";
+import { RoundCountdown, StateDot, useRoundClock } from "@/components/market/round-clock";
 import { HoldingsTable, RankMovement, TradesTable } from "@/components/market/tables";
-import { MarketStateBadge } from "@/components/market/status";
-import { RoundCountdown, useRoundClock } from "@/components/market/round-clock";
 import { ValueChart } from "@/components/market/value-chart";
-import { MarketBoard, NewsFeedCard } from "@/components/market/widgets";
+import { MoversList } from "@/components/market/widgets";
 import { effectiveParticipantVisibility, publishedLeaderboard } from "@/lib/domain/leaderboard";
-import { formatINR, formatPct } from "@/lib/domain/money";
-import { formatLongDate } from "@/lib/format";
-import { instrumentRows, netWorthSeries, proposalsForTeam, releasesNewestFirst, teamSummary, tradesForTeam, type ChartRange } from "@/lib/mock/selectors";
+import { formatINR, formatPct, formatPrice } from "@/lib/domain/money";
+import { MARKET_STATE_LABEL } from "@/lib/domain/trading-gate";
+import type { MarketState } from "@/lib/domain/types";
+import { formatQuantity } from "@/lib/format";
+import { isBuyerFor, movers, netWorthSeries, proposalsForTeam, releasesNewestFirst, symbolOf, teamNameOf, teamSummary, tradesForTeam, type ChartRange } from "@/lib/mock/selectors";
 import { cn } from "@/lib/utils";
 import { stockHref, useTerminal } from "./terminal-context";
 
 const RANGES = ["15M", "ROUND", "EVENT"] as const;
 
+const GUIDANCE: Record<MarketState, string> = {
+  OPEN: "The market is open. Follow the news and trade with other teams.",
+  BRIEFING: "Briefing: read the news and study prices. Trading opens in the next round.",
+  PAUSED: "Trading is paused. The host will restart the round shortly.",
+  FROZEN: "Trading is frozen by the host. Nothing can settle until the market reopens.",
+  BETWEEN_ROUNDS: "This round has finished. The next round starts soon.",
+  NOT_STARTED: "The event hasn't started yet. Explore the stocks and your starting portfolio.",
+  COMPLETED: "The event is over. Check the final leaderboard.",
+};
+
 export function DashboardScreen() {
   const { state, team, code, teamId } = useTerminal();
-  const { now, round, elapsedPct, marketState } = useRoundClock(state);
+  const { now, round, elapsedPct, active, marketState } = useRoundClock(state);
   const [range, setRange] = useState<(typeof RANGES)[number]>("EVENT");
 
   const summary = useMemo(() => teamSummary(state, teamId)!, [state, teamId]);
-  const rows = useMemo(() => instrumentRows(state, { enabledOnly: true }), [state]);
   const series = useMemo(() => netWorthSeries(state, teamId, range as ChartRange, now), [state, teamId, range, now]);
+  const releases = releasesNewestFirst(state);
   const incoming = proposalsForTeam(state, teamId).incomingOpen;
   const published = publishedLeaderboard(state);
   const visibility = effectiveParticipantVisibility(state);
   const ownRow = published.rows.find((r) => r.teamId === teamId);
-  const leader = published.rows[0];
+  const trades = tradesForTeam(state, teamId);
+  const { gainers, losers } = movers(state, 5);
   const periodChange = series.length ? series[series.length - 1].value - series[0].value : 0;
+  const warn = marketState === "PAUSED" || marketState === "FROZEN";
+  const roundsTotal = state.rounds.length - 1;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0">
-          <p className="text-xs text-fg-muted">
-            {state.event.code} · {formatLongDate(state.event.scheduledDate)}
+    <div className="flex flex-col gap-4">
+      {/* Now: what is happening and what to do */}
+      <Card className={cn("flex flex-wrap items-center gap-x-6 gap-y-3 border-l-2 px-4 py-3.5", warn ? "border-l-warning" : marketState === "OPEN" ? "border-l-accent" : "border-l-border-strong")}>
+        <div className="min-w-0 flex-1 basis-72">
+          <p className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-fg-muted uppercase">
+            <StateDot state={marketState} />
+            {MARKET_STATE_LABEL[marketState]}
+            {round && <span className="font-medium tracking-normal normal-case">· Round {round.number} of {roundsTotal}</span>}
           </p>
-          <h1 className="mt-0.5 text-lg leading-7 font-semibold tracking-tight text-fg-primary">{state.event.name}</h1>
-          <p className="mt-0.5 text-[13px] text-fg-secondary">
-            Trading as <span className="font-medium text-fg-primary">{team.name}</span>
-          </p>
+          <h1 className="mt-1 text-lg leading-6 font-semibold tracking-tight text-fg-primary">{round ? round.name : state.event.name}</h1>
+          <p className="mt-0.5 text-[13px] text-fg-secondary">{GUIDANCE[marketState]}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-10 items-center gap-3 rounded-lg border border-border bg-surface px-3">
-            <div className="leading-tight">
-              <p className="text-[10px] font-medium tracking-wide text-fg-muted uppercase">{round ? `Round ${round.number}` : "Round"}</p>
-              <p className="text-[13px] font-medium text-fg-primary">{round?.name ?? "Not started"}</p>
+        {active && (
+          <div className="w-44">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-fg-muted">Time left</span>
+              <RoundCountdown state={state} className="text-2xl leading-none font-semibold" />
             </div>
-            <span aria-hidden className="h-6 w-px bg-border" />
-            <RoundCountdown state={state} className="text-lg font-semibold" />
-            <MarketStateBadge state={marketState} />
+            <ProgressBar value={elapsedPct} label="Round progress" tone={warn ? "warning" : "accent"} className="mt-2" />
           </div>
-          <Link href={`/event/${code}/trade`} className={buttonClasses({ variant: "primary", size: "lg" })}>
-            <Plus className="size-4" />
-            Propose trade
-          </Link>
+        )}
+        <div className="flex items-center gap-2">
+          {marketState === "OPEN" ? (
+            <Link href={`/event/${code}/trade`} className={buttonClasses({ variant: "primary", size: "lg" })}>
+              <ArrowLeftRight className="size-4" />
+              Trade
+            </Link>
+          ) : (
+            <Link href={`/event/${code}/${marketState === "COMPLETED" ? "leaderboard" : "markets"}`} className={buttonClasses({ variant: "secondary", size: "lg" })}>
+              {marketState === "COMPLETED" ? "Final leaderboard" : "View markets"}
+            </Link>
+          )}
         </div>
-      </div>
+      </Card>
 
       {incoming.length > 0 && (
-        <InlineBanner
-          tone="accent"
-          icon={<Inbox className="size-4" />}
-          title={`${incoming.length} incoming trade proposal${incoming.length > 1 ? "s" : ""} waiting for your response.`}
-          action={
-            <Link href={`/event/${code}/trade`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
-              Review
+        <Card className="border-accent/40 bg-accent/6">
+          <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+            <span className="grid size-8 place-items-center rounded-full bg-accent/15 text-accent">
+              <Inbox className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold text-fg-primary">
+                {incoming.length} {incoming.length === 1 ? "team wants" : "teams want"} to trade with you
+              </p>
+              <p className="truncate text-[13px] text-fg-secondary">
+                {incoming
+                  .slice(0, 2)
+                  .map((p) => `${teamNameOf(state)(p.proposerTeamId)}: you ${isBuyerFor(p, teamId) ? "buy" : "sell"} ${formatQuantity(p.quantity)} ${symbolOf(state)(p.instrumentId)} at ₹${formatPrice(p.price)}`)
+                  .join(" · ")}
+              </p>
+            </div>
+            <Link href={`/event/${code}/trade`} className={buttonClasses({ variant: "primary" })}>
+              Review proposals
               <ArrowRight className="size-3.5" />
             </Link>
-          }
-        >
-          Proposals expire if you do not respond in time.
-        </InlineBanner>
+          </div>
+        </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <Kpi label="Net worth" value={formatINR(summary.netWorth)} footer={<span>Cash + holdings</span>} className="col-span-2 md:col-span-1" />
-        <Kpi
+      {/* Key performance */}
+      <Card className="grid grid-cols-2 lg:grid-cols-4">
+        <Metric label="Net worth" value={formatINR(summary.netWorth)} sub={<>Round P&amp;L <Delta value={summary.roundPnl} format="inr" /></>} className="border-r border-b border-border lg:border-b-0" />
+        <Metric
           label="Return"
           value={formatPct(summary.returnPct)}
-          valueClassName={tone(summary.returnPct)}
-          footer={
-            <span>
-              on {formatINR(summary.capitalBase, 0)} capital base
-            </span>
-          }
+          valueClassName={summary.returnPct > 0.00001 ? "text-positive" : summary.returnPct < -0.00001 ? "text-negative" : undefined}
+          sub={`On ${formatINR(summary.capitalBase, 0)} starting capital`}
+          className="border-b border-border lg:border-r lg:border-b-0"
         />
-        <Kpi label="Round P&L" value={<Delta value={summary.roundPnl} format="inr" className="text-inherit" />} valueClassName={tone(summary.roundPnl)} footer={<span>{round ? `Since R${round.number} started` : "Starts with the first round"}</span>} />
-        <Kpi label="Available cash" value={formatINR(summary.cash)} footer={<span>{formatPct(summary.netWorth ? (summary.cash / summary.netWorth) * 100 : 0, { signed: false, decimals: 1 })} of net worth</span>} />
-        <Kpi
+        <Metric label="Cash" value={formatINR(summary.cash)} sub="Available to buy" className="border-r border-border" />
+        <Metric
           label="Rank"
           value={visibility === "HIDDEN" ? "Hidden" : ownRow ? `#${ownRow.rank}` : "—"}
           valueClassName={visibility === "HIDDEN" ? "text-fg-muted" : undefined}
-          footer={
+          sub={
             visibility === "HIDDEN" ? (
-              <span>Leaderboard hidden by host</span>
+              "Revealed later by the host"
             ) : ownRow ? (
-              <span className="flex items-center gap-1.5">
-                of {published.rows.length} · <RankMovement movement={ownRow.movement} />
+              <span className="inline-flex items-center gap-1.5">
+                of {published.rows.length} teams <RankMovement movement={ownRow.movement} />
                 {published.frozenAt && <span className="text-warning">· frozen</span>}
               </span>
             ) : (
-              <span>Not ranked yet</span>
+              "Not ranked yet"
             )
           }
         />
-      </div>
+      </Card>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
+      {/* Main: chart + latest news */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <Card className="flex flex-col xl:col-span-8">
           <header className="flex flex-wrap items-start justify-between gap-3 px-4 pt-3.5">
             <div>
-              <h2 className="text-[13px] font-semibold text-fg-primary">Team net worth</h2>
-              <p className="mt-2 text-2xl leading-7 font-semibold tracking-tight text-fg-primary tabular-nums">{formatINR(summary.netWorth)}</p>
+              <h2 className="text-[13px] font-semibold text-fg-primary">Portfolio value</h2>
+              <p className="mt-1.5 text-2xl leading-7 font-semibold tracking-tight text-fg-primary tabular-nums">{formatINR(summary.netWorth)}</p>
               <p className="mt-1 flex items-center gap-2 text-xs">
                 <Delta value={periodChange} format="inr" />
-                <span className="text-fg-muted">{range === "15M" ? "Last 15 minutes" : range === "ROUND" ? "This round" : "Since the event started"}</span>
+                <span className="text-fg-muted">{range === "15M" ? "last 15 minutes" : range === "ROUND" ? "this round" : "since the event started"}</span>
               </p>
             </div>
             <SegmentedControl options={RANGES.map((r) => ({ value: r, label: r === "15M" ? "15M" : r === "ROUND" ? "Round" : "Event" }))} value={range} onChange={setRange} label="Chart range" />
           </header>
-          <ValueChart points={series} range={range} height="h-64 sm:h-72 xl:h-auto xl:min-h-72 xl:flex-1" className="px-1 pt-3 pb-2" label="Team net worth chart" baseline={summary.capitalBase} />
+          <ValueChart points={series} range={range} height="h-60 sm:h-72 xl:h-auto xl:min-h-72 xl:flex-1" className="px-1 pt-3 pb-2" label="Portfolio value chart" baseline={summary.capitalBase} />
         </Card>
+        <LatestNewsCard state={state} releases={releases} now={now} newsHref={`/event/${code}/news`} className="xl:col-span-4" />
+      </div>
 
-        <div className="flex flex-col gap-3 xl:col-span-4">
-          <Card>
-            <CardHeader title="Standing" subtitle={round ? `Round ${round.number} · ${round.name}` : "Event not started"} divider action={<Link href={`/event/${code}/leaderboard`} className={buttonClasses({ variant: "ghost", size: "sm" })}>Leaderboard<ArrowRight className="size-3.5" /></Link>} />
-            <div className="flex flex-col gap-3 px-4 py-3.5">
-              {visibility === "HIDDEN" ? (
-                <p className="text-[13px] text-fg-secondary">The host has hidden the leaderboard for this part of the event.</p>
-              ) : (
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-xs text-fg-muted">Your rank</p>
-                    <p className="mt-0.5 flex items-baseline gap-1.5 tabular-nums">
-                      <span className="text-2xl leading-7 font-semibold text-fg-primary">#{ownRow?.rank ?? "—"}</span>
-                      <span className="text-xs text-fg-muted">of {published.rows.length}</span>
-                    </p>
-                  </div>
-                  <div className="text-right text-xs">
-                    <Delta value={summary.returnPct} variant="pill" showArrow />
-                    {leader && visibility !== "OWN_RANK" && leader.teamId !== teamId && (
-                      <p className="mt-1 text-fg-muted">
-                        Leader {leader.teamName} <span className="text-fg-secondary tabular-nums">{formatPct(leader.returnPct)}</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
+      {/* Secondary */}
+      <Card>
+        <Tabs defaultValue="holdings">
+          <TabsList>
+            <TabsTrigger value="holdings" count={summary.holdings.length}>
+              Holdings
+            </TabsTrigger>
+            <TabsTrigger value="movers">Market movers</TabsTrigger>
+            <TabsTrigger value="trades" count={trades.length}>
+              Recent trades
+            </TabsTrigger>
+            <Link href={`/event/${code}/portfolio`} className="ml-auto hidden items-center gap-1 text-xs text-fg-secondary hover:text-fg-primary sm:flex">
+              Full portfolio <ArrowRight className="size-3" />
+            </Link>
+          </TabsList>
+          <TabsContent value="holdings">
+            {summary.holdings.length === 0 ? (
+              <p className="px-4 py-8 text-center text-[13px] text-fg-muted">You don&apos;t hold any stocks yet. Buy from another team on the Trade page.</p>
+            ) : (
+              <HoldingsTable state={state} holdings={summary.holdings} stockHref={stockHref(code)} showAllocation={false} />
+            )}
+          </TabsContent>
+          <TabsContent value="movers">
+            <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-border">
               <div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-fg-muted">Round progress</span>
-                  <RoundCountdown state={state} className="text-xs" />
-                </div>
-                <ProgressBar value={round && round.status !== "PENDING" ? (round.status === "ENDED" ? 100 : elapsedPct) : 0} label="Round progress" className="mt-1.5" />
+                <p className="px-4 pt-3 text-[11px] font-semibold tracking-wide text-positive uppercase">Top gainers this round</p>
+                <MoversList rows={gainers} hrefFor={stockHref(code)} empty="No gainers this round yet." />
+              </div>
+              <div>
+                <p className="px-4 pt-3 text-[11px] font-semibold tracking-wide text-negative uppercase">Top losers this round</p>
+                <MoversList rows={losers} hrefFor={stockHref(code)} empty="No losers this round yet." />
               </div>
             </div>
-          </Card>
-          <MarketBoard rows={rows} hrefFor={stockHref(code)} subtitle="Change since round open" limit={8} action={<Link href={`/event/${code}/markets`} className={buttonClasses({ variant: "ghost", size: "sm" })}>Markets<ArrowRight className="size-3.5" /></Link>} />
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader title="Holdings" subtitle={`${summary.holdings.length} positions · ${formatINR(summary.holdingsValue)} at reference prices`} action={<Link href={`/event/${code}/portfolio`} className={buttonClasses({ variant: "ghost", size: "sm" })}>Portfolio<ArrowRight className="size-3.5" /></Link>} />
-        <HoldingsTable state={state} holdings={summary.holdings} stockHref={stockHref(code)} />
+          </TabsContent>
+          <TabsContent value="trades">
+            <TradesTable state={state} trades={trades.slice(0, 8)} perspectiveTeamId={teamId} now={now} />
+          </TabsContent>
+        </Tabs>
       </Card>
-
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-        <Card className="xl:col-span-7">
-          <CardHeader title="Recent transactions" subtitle="Settled P2P trades involving your team" action={<Link href={`/event/${code}/transactions`} className={buttonClasses({ variant: "ghost", size: "sm" })}>All transactions<ArrowRight className="size-3.5" /></Link>} />
-          <TradesTable state={state} trades={tradesForTeam(state, teamId).slice(0, 6)} perspectiveTeamId={teamId} now={now} />
-        </Card>
-        <div className="xl:col-span-5">
-          <NewsFeedCard state={state} releases={releasesNewestFirst(state)} now={now} hrefAll={`/event/${code}/news`} />
-        </div>
-      </div>
+      <p className="text-center text-xs text-fg-muted">
+        Trading as <span className="text-fg-secondary">{team.name}</span> · {state.event.name}
+      </p>
     </div>
   );
 }
 
-function tone(value: number) {
-  return value > 0.00001 ? "text-positive" : value < -0.00001 ? "text-negative" : undefined;
-}
-
-function Kpi({ label, value, footer, valueClassName, className }: { label: string; value: React.ReactNode; footer: React.ReactNode; valueClassName?: string; className?: string }) {
+function Metric({ label, value, sub, valueClassName, className }: { label: string; value: ReactNode; sub: ReactNode; valueClassName?: string; className?: string }) {
   return (
-    <Card className={cn("px-4 py-3.5", className)}>
+    <div className={cn("min-w-0 px-4 py-3.5", className)}>
       <p className="text-xs font-medium text-fg-secondary">{label}</p>
-      <p className={cn("mt-1.5 truncate text-[22px] leading-7 font-semibold tracking-tight text-fg-primary tabular-nums", valueClassName)}>{value}</p>
-      <div className="mt-1 truncate text-xs text-fg-muted">{footer}</div>
-    </Card>
+      <p className={cn("mt-1 truncate text-[22px] leading-7 font-semibold tracking-tight text-fg-primary tabular-nums", valueClassName)}>{value}</p>
+      <div className="mt-0.5 truncate text-xs text-fg-muted">{sub}</div>
+    </div>
   );
 }
