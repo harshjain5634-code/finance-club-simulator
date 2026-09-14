@@ -153,22 +153,28 @@ function TerminalFrame({ state, code, teamId, children }: { state: EventState; c
           <h1 className="mr-auto truncate text-[15px] font-semibold tracking-tight text-fg-primary lg:mr-0 lg:w-32 xl:w-36">{participantTitle(pathname, code)}</h1>
           <InstrumentSearch rows={rows} hrefFor={stockHref(code)} className="order-last w-full lg:order-none lg:w-56 xl:w-72" />
           <div className="flex items-center gap-2 lg:ml-auto">
-            <RoundPill state={state} className="hidden md:inline-flex" />
-            <MarketStateBadge state={marketState} size="md" className="hidden sm:inline-flex" />
+            <span className="hidden md:contents">
+              <RoundPill state={state} />
+            </span>
+            <span className="hidden md:contents">
+              <MarketStateBadge state={marketState} size="md" />
+            </span>
             <div className="hidden h-8 flex-col justify-center border-l border-border pl-3 leading-tight xl:flex">
               <span className="text-[10px] font-medium tracking-wide text-fg-muted uppercase">Cash</span>
               <span className="text-[13px] font-medium text-fg-primary tabular-nums">{formatINR(teamCash(state, teamId))}</span>
             </div>
             <ThemeToggle policy={state.event.themePolicy} />
             <NewsAlertsMenu state={state} teamId={teamId} code={code} />
-            <Avatar name={team.name} tone="accent" className="hidden sm:grid" />
+            <span className="hidden sm:contents">
+              <Avatar name={team.name} tone="accent" />
+            </span>
           </div>
           <div className="flex w-full items-center justify-between gap-2 md:hidden">
             <span className="min-w-0 truncate text-xs text-fg-secondary">
               {round ? `R${round.number} · ${round.name}` : "Awaiting first round"}
               {round && (round.status === "RUNNING" || round.status === "PAUSED") && <span className="ml-2 font-mono text-fg-primary tabular-nums">{formatDuration(remaining)}</span>}
             </span>
-            <MarketStateBadge state={marketState} className="sm:hidden" />
+            <MarketStateBadge state={marketState} />
           </div>
         </div>
       )}

@@ -16,7 +16,6 @@ import type { EventState } from "@/lib/domain/types";
 import { hostNav } from "@/lib/navigation";
 import { useEventById } from "@/lib/mock/hooks";
 import { HOST_NAME } from "@/lib/mock/store";
-import { cn } from "@/lib/utils";
 import { HostEventContext } from "./host-context";
 import { FreezeTradingControl } from "./trading-controls";
 
@@ -139,18 +138,19 @@ function HostTopBar({ state, openNav, navOpen }: { state: EventState; openNav: (
             )}
           </div>
         )}
-        <MarketStateBadge state={marketState} size="md" className="hidden md:inline-flex" />
+        <span className="hidden md:contents">
+          <MarketStateBadge state={marketState} size="md" />
+        </span>
         <FreezeTradingControl state={state} />
-        <a
-          href={`/event/${event.code}/projector?key=${event.projector.projectorKey}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(buttonClasses({ variant: "secondary" }), "hidden sm:inline-flex")}
-        >
-          Open projector
-          <ExternalLink className="size-3.5" />
-        </a>
-        <Avatar name="Host Club" tone="accent" className="hidden xl:grid" />
+        <span className="hidden sm:contents">
+          <a href={`/event/${event.code}/projector?key=${event.projector.projectorKey}`} target="_blank" rel="noopener noreferrer" className={buttonClasses({ variant: "secondary" })}>
+            Open projector
+            <ExternalLink className="size-3.5" />
+          </a>
+        </span>
+        <span className="hidden xl:contents">
+          <Avatar name="Host Club" tone="accent" />
+        </span>
       </div>
     </div>
   );

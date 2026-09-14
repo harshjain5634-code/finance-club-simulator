@@ -15,7 +15,7 @@ import {
 
 const SYMBOLS = ["RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY", "SBIN", "ITC", "LT"];
 
-/** ₹5,01,900 cash + ₹4,98,100 of stock = ₹10,00,000 capital base per team. */
+/** ₹5,01,877.50 cash + ₹4,98,122.50 of stock = ₹10,00,000 capital base per team. */
 const SHARES: Record<string, number> = {
   RELIANCE: 60,
   TCS: 20,
@@ -96,14 +96,14 @@ export function finsim26RealConfig(timing: ScenarioTiming = "STANDARD"): EventCo
     universeMode: "REAL_SIMULATED",
     newsMode: "MANUAL",
     capitalRule: "SAME",
-    defaultStartingCash: rupees(501900),
+    defaultStartingCash: rupees(501877.5),
     themePolicy: "FORCE_DARK",
     rules: DEFAULT_RULES,
     teams: DEMO_TEAMS,
     instruments: SYMBOLS.map((symbol) => catalogueInstrument(REAL_CATALOGUE.find((c) => c.symbol === symbol)!)),
     rounds: demoRounds(timing),
     news: REAL_NEWS,
-    allocation: { mode: "CASH_AND_STOCKS", distribution: "IDENTICAL", identical: { cash: rupees(501900), shares: SHARES } },
+    allocation: { mode: "CASH_AND_STOCKS", distribution: "IDENTICAL", identical: { cash: rupees(501877.5), shares: SHARES } },
     leaderboard: DEFAULT_LEADERBOARD,
     projector: DEFAULT_PROJECTOR,
   };

@@ -83,7 +83,7 @@ export function DashboardScreen() {
       )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <Kpi label="Net worth" value={formatINR(summary.netWorth)} footer={<span>Cash + holdings at reference prices</span>} className="col-span-2 md:col-span-1" />
+        <Kpi label="Net worth" value={formatINR(summary.netWorth)} footer={<span>Cash + holdings</span>} className="col-span-2 md:col-span-1" />
         <Kpi
           label="Return"
           value={formatPct(summary.returnPct)}

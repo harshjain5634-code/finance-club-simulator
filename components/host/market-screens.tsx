@@ -88,7 +88,7 @@ export function NewsDeskScreen() {
             <DataTable
               rows={items}
               rowKey={(n) => n.id}
-              minWidth={1080}
+              minWidth={900}
               empty="No stories yet."
               columns={[
                 { key: "no", header: "#", sortValue: (n) => n.number, cell: (n) => <span className="font-mono text-xs text-fg-muted">{n.number}</span> },
@@ -97,33 +97,37 @@ export function NewsDeskScreen() {
                   header: "Headline",
                   sortValue: (n) => n.headline,
                   cell: (n) => (
-                    <span className="block max-w-96 leading-tight">
+                    <span className="block max-w-80 leading-tight whitespace-normal">
                       <span className="block truncate font-medium text-fg-primary" title={n.headline}>{n.headline}</span>
                       <span className="block text-[11px] text-fg-muted">{n.priority === "HIGH" ? "High priority" : n.priority === "LOW" ? "Low priority" : "Normal priority"}</span>
                     </span>
                   ),
                 },
                 { key: "round", header: "Round", sortValue: (n) => n.roundId ?? "", cell: (n) => <span className="text-fg-secondary">{roundName(n.roundId)}</span> },
-                { key: "stocks", header: "Affected stocks", cell: (n) => <span className="text-fg-secondary">{n.impacts.map((i) => instrumentOf(state, i.instrumentId)?.symbol).join(", ") || "—"}</span> },
                 {
                   key: "impact",
-                  header: "Impact",
-                  cell: (n) =>
-                    n.status === "RELEASED" ? (
-                      <span className="flex flex-wrap gap-1.5">
-                        {state.newsReleases.find((r) => r.id === n.releaseId)?.impacts.map((i) => (
-                          <span key={i.instrumentId} className="text-xs text-fg-secondary">
-                            {instrumentOf(state, i.instrumentId)?.symbol} <Delta value={i.appliedPct} className="text-xs" />
-                          </span>
-                        ))}
+                  header: "Affected stocks · impact",
+                  cell: (n) => {
+                    const released = state.newsReleases.find((r) => r.id === n.releaseId);
+                    if (n.impacts.length === 0) return <span className="text-fg-muted">Informational</span>;
+                    return (
+                      <span className="flex flex-col gap-0.5">
+                        {released
+                          ? released.impacts.map((i) => (
+                              <span key={i.instrumentId} className="flex items-center gap-1.5 text-xs">
+                                <span className="w-16 font-medium text-fg-primary">{instrumentOf(state, i.instrumentId)?.symbol}</span>
+                                <Delta value={i.appliedPct} className="text-xs" />
+                              </span>
+                            ))
+                          : n.impacts.map((i) => (
+                              <span key={i.id} className="flex items-center gap-1.5 text-xs">
+                                <span className="w-16 font-medium text-fg-primary">{instrumentOf(state, i.instrumentId)?.symbol}</span>
+                                <ImpactLabel configured={configuredImpactOf(i)} />
+                              </span>
+                            ))}
                       </span>
-                    ) : (
-                      <span className="flex flex-wrap gap-x-2">
-                        {n.impacts.map((i) => (
-                          <ImpactLabel key={i.id} configured={configuredImpactOf(i)} />
-                        ))}
-                      </span>
-                    ),
+                    );
+                  },
                 },
                 { key: "status", header: "Status", sortValue: (n) => n.status, cell: (n) => <NewsStatusBadge status={n.status} /> },
                 {
@@ -131,10 +135,10 @@ export function NewsDeskScreen() {
                   header: "",
                   align: "right",
                   cell: (n) => (
-                    <span className="inline-flex gap-1">
+                    <span className="inline-flex items-center gap-1">
                       {n.status !== "RELEASED" && (
-                        <Button variant="ghost" size="sm" onClick={() => setEditing(n)} aria-label={`Edit story ${n.number}`}>
-                          <Pencil className="size-3.5" /> Edit
+                        <Button variant="ghost" size="icon-sm" onClick={() => setEditing(n)} aria-label={`Edit story ${n.number}`} title="Edit">
+                          <Pencil className="size-3.5" />
                         </Button>
                       )}
                       {(n.status === "READY" || n.status === "DRAFT") && (
@@ -144,7 +148,7 @@ export function NewsDeskScreen() {
                       )}
                       {n.status === "READY" && (
                         <Button variant="secondary" size="sm" onClick={() => setReleaseItem(n)} disabled={!live}>
-                          Preview & release
+                          Release…
                         </Button>
                       )}
                     </span>
