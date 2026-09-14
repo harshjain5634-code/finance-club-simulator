@@ -9,6 +9,7 @@ import * as news from "@/lib/domain/news";
 import * as p2p from "@/lib/domain/p2p";
 import { actorCan, type Permission } from "@/lib/domain/permissions";
 import * as portfolio from "@/lib/domain/portfolio";
+import * as randomNews from "@/lib/domain/random-news";
 import * as setup from "@/lib/domain/setup";
 import type {
   Actor,
@@ -131,7 +132,27 @@ export const rejectProposalByHost = (eventId: string, proposalId: string, reason
 /* ───────────── News & prices ───────────── */
 
 export const releaseNews = (eventId: string, newsItemId: string, key?: string) =>
-  runEventCommand(eventId, host(), "news.release", "releaseNews", (s, c) => news.releaseNews(s, c, newsItemId), key);
+  runEventCommand(eventId, host(), "news.release", "releaseNews", (s, c) => randomNews.releaseNewsManually(s, c, newsItemId), key);
+
+/* ───────────── Random news mode ───────────── */
+
+export const setNewsReleaseMode = (eventId: string, mode: "MANUAL" | "RANDOM") =>
+  runEventCommand(eventId, host(), "news.release", "setNewsReleaseMode", (s, c) => randomNews.setRandomNewsMode(s, c, mode));
+
+export const updateRandomNewsSettings = (eventId: string, input: randomNews.RandomNewsSettingsInput) =>
+  runEventCommand(eventId, host(), "news.release", "updateRandomNewsSettings", (s, c) => randomNews.updateRandomNewsSettings(s, c, input));
+
+export const startRandomNews = (eventId: string) => runEventCommand(eventId, host(), "news.release", "startRandomNews", randomNews.startRandomNews);
+export const pauseRandomNews = (eventId: string) => runEventCommand(eventId, host(), "news.release", "pauseRandomNews", randomNews.pauseRandomNews);
+export const resumeRandomNews = (eventId: string) => runEventCommand(eventId, host(), "news.release", "resumeRandomNews", randomNews.resumeRandomNews);
+export const stopRandomNews = (eventId: string) => runEventCommand(eventId, host(), "news.release", "stopRandomNews", randomNews.stopRandomNews);
+export const skipRandomNews = (eventId: string) => runEventCommand(eventId, host(), "news.release", "skipRandomNews", randomNews.skipScheduledRandomNews);
+
+export const releaseRandomNewsNow = (eventId: string, key?: string) =>
+  runEventCommand(eventId, host(), "news.release", "releaseRandomNewsNow", randomNews.releaseRandomNow, key);
+
+export const setRandomPoolMembership = (eventId: string, newsItemId: string, included: boolean) =>
+  runEventCommand(eventId, host(), "news.release", "setRandomPoolMembership", (s, c) => randomNews.toggleRandomPool(s, c, newsItemId, included));
 
 export const skipNews = (eventId: string, newsItemId: string) =>
   runEventCommand(eventId, host(), "news.manage", "skipNews", (s, c) => news.skipNews(s, c, newsItemId));
@@ -292,11 +313,12 @@ export function resetAllPrototypeData(): Promise<OpResult> {
 
 /* ───────────── Scheduled work (stand-in for the Phase 4 worker) ───────────── */
 
-export function runScheduledWork(eventId: string): Promise<OpResult<{ expired: number; roundEnded: boolean }>> {
+export function runScheduledWork(eventId: string): Promise<OpResult<{ expired: number; roundEnded: boolean; newsReleased: boolean }>> {
   return runEventCommand(eventId, { type: "SYSTEM", name: "Scheduler" }, "round.control", "scheduledWork", (s, c) => {
     const roundEnded = lifecycle.endRoundIfExpired(s, c);
     const expired = p2p.expireDueProposals(s, c);
-    if (!roundEnded && expired === 0) return fail("NOTHING_DUE", "Nothing due.");
-    return ok({ expired, roundEnded });
+    const random = randomNews.tickRandomNews(s, c);
+    if (!roundEnded && expired === 0 && !random.changed) return fail("NOTHING_DUE", "Nothing due.");
+    return ok({ expired, roundEnded, newsReleased: random.release !== null });
   });
 }

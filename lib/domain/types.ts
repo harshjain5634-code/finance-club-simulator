@@ -305,12 +305,48 @@ export type ResolvedImpact = {
   priceEventId: string;
 };
 
+export type NewsReleaseSource = "MANUAL" | "RANDOM";
+
+export type RandomNewsStatus = "STOPPED" | "RUNNING" | "PAUSED";
+
+export type RandomNewsLogEntry = {
+  id: string;
+  newsItemId: string;
+  roundId: string | null;
+  scheduledFor: number;
+  at: number;
+  outcome: "RELEASED" | "RELEASED_EARLY" | "SKIPPED";
+  releaseId: string | null;
+};
+
+/** Host-controlled random news scheduler (Phase 1: runs in the leader tab; later: simulation worker). */
+export type RandomNewsState = {
+  mode: "MANUAL" | "RANDOM";
+  status: RandomNewsStatus;
+  /** CURRENT = stories assigned to whichever round is running; otherwise only while that round runs. */
+  roundScope: "CURRENT" | string;
+  includeUnassigned: boolean;
+  excludedNewsIds: string[];
+  minGapSeconds: number;
+  maxGapSeconds: number;
+  maxPerRound: number;
+  nextReleaseAt: number | null;
+  scheduledNewsId: string | null;
+  scheduledRoundId: string | null;
+  heldRemainingMs: number | null;
+  log: RandomNewsLogEntry[];
+};
+
 export type NewsRelease = {
   id: string;
   newsItemId: string;
   roundId: string | null;
   releasedAt: number;
   releasedBy: Actor;
+  /** MANUAL = released by the host; RANDOM = released by the random news scheduler. */
+  source: NewsReleaseSource;
+  /** For random releases: the time the scheduler planned (actual time is releasedAt). */
+  scheduledFor: number | null;
   headline: string;
   body: string;
   impacts: ResolvedImpact[];
@@ -394,7 +430,15 @@ export type AuditType =
   | "LEADERBOARD_VISIBILITY_CHANGED"
   | "LEADERBOARD_FROZEN"
   | "LEADERBOARD_UNFROZEN"
-  | "PROJECTOR_UPDATED";
+  | "PROJECTOR_UPDATED"
+  | "NEWS_RANDOM_MODE_CHANGED"
+  | "NEWS_RANDOM_STARTED"
+  | "NEWS_RANDOM_PAUSED"
+  | "NEWS_RANDOM_RESUMED"
+  | "NEWS_RANDOM_STOPPED"
+  | "NEWS_RANDOM_SCHEDULED"
+  | "NEWS_RANDOM_SKIPPED"
+  | "NEWS_RANDOM_SETTINGS_UPDATED";
 
 export type AuditEvent = {
   id: string;
@@ -460,6 +504,7 @@ export type EventState = {
   roundMarks: Record<string, StandingMark>;
   processedCommands: Record<string, ProcessedCommand>;
   counters: Record<string, number>;
+  randomNews: RandomNewsState;
 };
 
 export type OpContext = {

@@ -9,6 +9,7 @@ import type {
   NewsImpact,
   NewsItem,
   NewsRelease,
+  NewsReleaseSource,
   OpContext,
   OpResult,
   Paise,
@@ -86,7 +87,12 @@ export function previewImpact(state: EventState, impact: NewsImpact): ImpactPrev
  * Releases a news item: resolves each impact exactly once, applies it through the price pipeline,
  * and stores configured, resolved and applied values permanently. A news item can be released once.
  */
-export function releaseNews(state: EventState, ctx: OpContext, newsItemId: string): OpResult<NewsRelease> {
+export function releaseNews(
+  state: EventState,
+  ctx: OpContext,
+  newsItemId: string,
+  options: { source?: NewsReleaseSource; scheduledFor?: number | null } = {},
+): OpResult<NewsRelease> {
   const item = state.news.find((n) => n.id === newsItemId);
   if (!item) return fail("NOT_FOUND", "News item not found.");
   if (item.status === "RELEASED" || item.releaseId) {
@@ -137,6 +143,8 @@ export function releaseNews(state: EventState, ctx: OpContext, newsItemId: strin
     roundId: state.event.currentRoundId,
     releasedAt: ctx.now,
     releasedBy: ctx.actor,
+    source: options.source ?? "MANUAL",
+    scheduledFor: options.scheduledFor ?? null,
     headline: item.headline,
     body: item.body,
     impacts,
@@ -150,7 +158,7 @@ export function releaseNews(state: EventState, ctx: OpContext, newsItemId: strin
     at: ctx.now,
     actor: ctx.actor,
     type: "NEWS_RELEASED",
-    summary: `Released #${item.number}: ${item.headline}`,
+    summary: `Released #${item.number}${release.source === "RANDOM" ? " (random)" : ""}: ${item.headline}`,
     after: {
       impacts: impacts.map((i) => ({
         instrumentId: i.instrumentId,
@@ -162,7 +170,12 @@ export function releaseNews(state: EventState, ctx: OpContext, newsItemId: strin
         clamped: i.clamped,
       })),
     },
-    refs: { newsItemId: item.id, newsReleaseId: release.id },
+    refs: {
+      newsItemId: item.id,
+      newsReleaseId: release.id,
+      source: release.source,
+      ...(release.scheduledFor !== null ? { scheduledFor: new Date(release.scheduledFor).toISOString() } : {}),
+    },
   });
   recordValuation(state, ctx.now);
   return ok(release);

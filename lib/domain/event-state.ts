@@ -1,6 +1,7 @@
 import { appendAudit } from "./audit";
 import type { EventConfig } from "./event-config";
 import { recordValuation } from "./portfolio";
+import { defaultRandomNewsState } from "./random-news";
 import type { EventState, Instrument, NewsItem, ProjectorSceneSetting, Round, Team } from "./types";
 
 export const DEFAULT_SCENES: ProjectorSceneSetting[] = [
@@ -185,6 +186,7 @@ export function createEventState(config: EventConfig, options: CreateOptions): E
     roundMarks: {},
     processedCommands: {},
     counters: {},
+    randomNews: defaultRandomNewsState(),
   };
 
   const actor = { type: "HOST" as const, name: options.hostName };

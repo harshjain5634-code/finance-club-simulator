@@ -94,9 +94,9 @@ export function buildExport(state: EventState, kind: ExportKind): CsvTable {
       };
     case "news-releases":
       return {
-        headers: ["release_id", "released_at_iso", "round", "headline", "stock", "configured_impact", "resolved_pct", "applied_pct", "previous_price_inr", "new_price_inr", "clamped"],
+        headers: ["release_id", "source", "scheduled_for_iso", "released_at_iso", "round", "headline", "stock", "configured_impact", "resolved_pct", "applied_pct", "previous_price_inr", "new_price_inr", "clamped"],
         rows: state.newsReleases.flatMap((r) =>
-          (r.impacts.length ? r.impacts : [null]).map((i) => [r.id, iso(r.releasedAt), round(r.roundId), r.headline, i ? symbol(i.instrumentId) : "", i ? describeConfigured(i.configured) : "", i?.resolvedPct ?? "", i?.appliedPct ?? "", i ? rupees(i.previousPrice) : "", i ? rupees(i.newPrice) : "", i?.clamped ?? ""]),
+          (r.impacts.length ? r.impacts : [null]).map((i) => [r.id, r.source, r.scheduledFor ? iso(r.scheduledFor) : "", iso(r.releasedAt), round(r.roundId), r.headline, i ? symbol(i.instrumentId) : "", i ? describeConfigured(i.configured) : "", i?.resolvedPct ?? "", i?.appliedPct ?? "", i ? rupees(i.previousPrice) : "", i ? rupees(i.newPrice) : "", i?.clamped ?? ""]),
         ),
       };
     case "leaderboard":

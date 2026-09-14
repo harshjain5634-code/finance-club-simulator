@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { randomNewsNeedsTick } from "@/lib/domain/random-news";
 import { runScheduledWork } from "./commands";
 import { getStoreSnapshot } from "./store";
 
@@ -22,7 +23,8 @@ function tick() {
     const round = eventState.rounds.find((r) => r.id === event.currentRoundId);
     const roundDue = event.status === "LIVE" && round?.status === "RUNNING" && round.endsAt !== null && round.endsAt <= now;
     const proposalDue = eventState.proposals.some((p) => p.status === "PROPOSED" && p.expiresAt <= now);
-    if (roundDue || proposalDue) void runScheduledWork(event.id);
+    const newsDue = randomNewsNeedsTick(eventState, now);
+    if (roundDue || proposalDue || newsDue) void runScheduledWork(event.id);
   }
 }
 
