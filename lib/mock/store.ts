@@ -27,7 +27,7 @@ export type StoreState = {
 };
 
 /** Bump when the stored shape changes; older prototype data is discarded and re-seeded. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 const STORAGE_KEY = "finsim:store";
 const CHANNEL_NAME = "finsim:sync";
 const LOCK_NAME = "finsim:store-write";

@@ -9,6 +9,7 @@ import * as news from "@/lib/domain/news";
 import * as p2p from "@/lib/domain/p2p";
 import { actorCan, type Permission } from "@/lib/domain/permissions";
 import * as portfolio from "@/lib/domain/portfolio";
+import * as projector from "@/lib/domain/projector";
 import * as randomNews from "@/lib/domain/random-news";
 import * as setup from "@/lib/domain/setup";
 import type {
@@ -20,6 +21,7 @@ import type {
   Paise,
   ParticipantLeaderboardVisibility,
   ProjectorLeaderboardVisibility,
+  ProjectorScene,
   ProjectorSettings,
   UniverseMode,
 } from "@/lib/domain/types";
@@ -268,6 +270,20 @@ export const unfreezeLeaderboard = (eventId: string) =>
 
 export const updateProjector = (eventId: string, input: Partial<Omit<ProjectorSettings, "projectorKey">> & { regenerateKey?: boolean }) =>
   runEventCommand(eventId, host(), "projector.manage", "updateProjector", (s, c) => setup.updateProjector(s, c, input));
+
+export const stepProjectorScene = (eventId: string, direction: 1 | -1) =>
+  runEventCommand(eventId, host(), "projector.manage", "stepProjectorScene", (s, c) => projector.stepProjectorScene(s, c, direction));
+
+export const pinProjectorScene = (eventId: string, scene: ProjectorScene | null) =>
+  runEventCommand(eventId, host(), "projector.manage", "pinProjectorScene", (s, c) => projector.pinProjectorScene(s, c, scene));
+
+export const showLatestNewsOnProjector = (eventId: string) =>
+  runEventCommand(eventId, host(), "projector.manage", "showLatestNewsOnProjector", projector.showLatestNewsOnProjector);
+
+export const showProjectorMessage = (eventId: string, input: { title: string; body: string; durationSeconds: number | null }) =>
+  runEventCommand(eventId, host(), "projector.manage", "showProjectorMessage", (s, c) => projector.showProjectorMessage(s, c, input));
+
+export const clearProjectorTakeover = (eventId: string) => runEventCommand(eventId, host(), "projector.manage", "clearProjectorTakeover", projector.clearProjectorTakeover);
 
 /* ───────────── Event creation & demo ───────────── */
 

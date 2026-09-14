@@ -3,6 +3,7 @@ import { nextId } from "./ids";
 import { round2 } from "./money";
 import { applyPercent, applyPriceRules, limitsFor, recordPriceChange } from "./prices";
 import { recordValuation } from "./portfolio";
+import { startNewsTakeover } from "./projector";
 import type {
   ConfiguredImpact,
   EventState,
@@ -150,6 +151,7 @@ export function releaseNews(
     impacts,
   };
   state.newsReleases.push(release);
+  startNewsTakeover(state, release.id, ctx.now);
   item.status = "RELEASED";
   item.releaseId = release.id;
   item.updatedAt = ctx.now;

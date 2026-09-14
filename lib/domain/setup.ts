@@ -4,6 +4,7 @@ import { computeLeaderboard } from "./leaderboard";
 import { formatINR } from "./money";
 import { validateNewsItem } from "./news";
 import { allocateToTeam, allocationRowFor, recordValuation } from "./portfolio";
+import { preserveRotationOnSceneEdit } from "./projector";
 import type {
   EventRules,
   EventState,
@@ -462,7 +463,7 @@ export function updateProjector(
 ): OpResult<ProjectorSettings> {
   const projector = state.event.projector;
   const { regenerateKey, ...rest } = input;
-  Object.assign(projector, rest);
+  preserveRotationOnSceneEdit(state, ctx.now, () => Object.assign(projector, rest));
   if (regenerateKey) projector.projectorKey = generateProjectorKey(ctx.random);
   const describe = (scene: ProjectorScene | null | undefined) => (scene ? scene.replace(/_/g, " ").toLowerCase() : "rotation");
   appendAudit(state, {

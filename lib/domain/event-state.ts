@@ -11,6 +11,7 @@ export const DEFAULT_SCENES: ProjectorSceneSetting[] = [
   { scene: "MARKET_BOARD", enabled: true, durationSeconds: 18 },
   { scene: "TOP_MOVERS", enabled: true, durationSeconds: 14 },
   { scene: "NEWS_WALL", enabled: true, durationSeconds: 14 },
+  { scene: "CUSTOM_MESSAGE", enabled: false, durationSeconds: 12 },
   { scene: "FINAL_RESULTS", enabled: true, durationSeconds: 30 },
 ];
 
@@ -144,8 +145,12 @@ export function createEventState(config: EventConfig, options: CreateOptions): E
       projector: {
         scenes: DEFAULT_SCENES.map((s) => ({ ...s })),
         pinnedScene: null,
+        rotation: { anchorScene: null, anchorAt: now },
+        takeover: null,
+        customMessage: { title: "The next round starts shortly", body: "Check the latest news and get your trades ready." },
         breakingNewsSeconds: config.projector.breakingNewsSeconds,
         tickerEnabled: config.projector.tickerEnabled,
+        tickerSpeed: "NORMAL",
         theme: config.projector.theme,
         projectorKey: generateProjectorKey(options.random),
       },

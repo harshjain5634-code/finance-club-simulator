@@ -1,11 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { Maximize } from "lucide-react";
 import { EmptyState } from "@/components/ui/misc";
+import type { ProjectorScene } from "@/lib/domain/types";
 import { useEventByCode } from "@/lib/mock/hooks";
 import { applyDocumentTheme } from "@/lib/theme";
-import { ProjectorStage, StageScaler } from "./projector-stage";
+import { cn } from "@/lib/utils";
+import { ProjectorStage, StageScaler, type StageOverride } from "./projector-stage";
+
+/** `?scene=` values for reviewing a single scene on this screen only; the shared rotation is untouched. */
+const SCENE_PARAM: Record<string, ProjectorScene> = {
+  standby: "STANDBY",
+  round: "ROUND_STATUS",
+  leaderboard: "LEADERBOARD",
+  market: "MARKET_BOARD",
+  movers: "TOP_MOVERS",
+  news: "NEWS_WALL",
+  message: "CUSTOM_MESSAGE",
+  final: "FINAL_RESULTS",
+};
 
 /** Full-screen audience display. No controls; the host configures everything from the console. */
 export function ProjectorScreen() {
@@ -49,9 +64,59 @@ export function ProjectorScreen() {
     );
   }
 
+  const sceneParam = searchParams.get("scene")?.toLowerCase() ?? null;
+  const override: StageOverride | null = sceneParam === "breaking" ? { breaking: true } : sceneParam && SCENE_PARAM[sceneParam] ? { scene: SCENE_PARAM[sceneParam] } : null;
+  const breakingUnavailable = sceneParam === "breaking" && state.newsReleases.length === 0;
+
   return (
-    <StageScaler className="h-dvh w-screen">
-      <ProjectorStage state={state} joinUrl={`${origin || "your-site"}/join`} />
-    </StageScaler>
+    <IdleCursor>
+      <StageScaler className="h-dvh w-screen">
+        <ProjectorStage state={state} joinUrl={`${origin || "your-site"}/join`} override={override} />
+      </StageScaler>
+      {breakingUnavailable && (
+        <p className="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-fg-secondary">No news released yet — release a story from the news desk to preview breaking news.</p>
+      )}
+    </IdleCursor>
+  );
+}
+
+/** Hides the cursor while idle and offers a full-screen button when the mouse moves. */
+function IdleCursor({ children }: { children: ReactNode }) {
+  const [active, setActive] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    let timer: number | undefined;
+    const onMove = () => {
+      setActive(true);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setActive(false), 2500);
+    };
+    const onFullscreenChange = () => setFullscreen(Boolean(document.fullscreenElement));
+    window.addEventListener("mousemove", onMove);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("mousemove", onMove);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, []);
+
+  return (
+    <div className={cn("relative", !active && "cursor-none")}>
+      {children}
+      {!fullscreen && (
+        <button
+          type="button"
+          onClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)}
+          className={cn(
+            "fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-md border border-border-strong bg-surface-raised/95 px-3 py-2 text-sm font-medium text-fg-primary shadow-lg transition-opacity duration-300",
+            active ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
+        >
+          <Maximize className="size-4" /> Enter full screen
+        </button>
+      )}
+    </div>
   );
 }

@@ -72,6 +72,12 @@
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Projector breaking-news countdown bar; the start scale comes from --progress-from on the element. */
+@keyframes takeover-progress {
+  from { transform: scaleX(var(--progress-from, 1)); }
+  to { transform: scaleX(0); }
+}
+
 /* Light theme scaffold: same token names, different values. Not design-polished in Phase 1. */
 [data-theme="light"] {
   color-scheme: light;

@@ -55,6 +55,7 @@ export type ProjectorScene =
   | "MARKET_BOARD"
   | "TOP_MOVERS"
   | "NEWS_WALL"
+  | "CUSTOM_MESSAGE"
   | "FINAL_RESULTS";
 
 export type ProjectorSceneSetting = {
@@ -63,11 +64,24 @@ export type ProjectorSceneSetting = {
   durationSeconds: number;
 };
 
+/** The rotating scene an overlay interrupted, so it can pick up where it left off. */
+export type ProjectorResumePoint = { scene: ProjectorScene; elapsedMs: number };
+
+/** A temporary full-screen overlay on top of the scene rotation. */
+export type ProjectorTakeover =
+  | { kind: "NEWS"; releaseId: string; startedAt: number; durationSeconds: number; resume?: ProjectorResumePoint | null }
+  | { kind: "MESSAGE"; title: string; body: string; startedAt: number; durationSeconds: number | null; resume?: ProjectorResumePoint | null };
+
 export type ProjectorSettings = {
   scenes: ProjectorSceneSetting[];
   pinnedScene: ProjectorScene | null;
+  /** Rotation is computed from this anchor and the clock, so every screen shows the same scene. */
+  rotation: { anchorScene: ProjectorScene | null; anchorAt: number };
+  takeover: ProjectorTakeover | null;
+  customMessage: { title: string; body: string };
   breakingNewsSeconds: number;
   tickerEnabled: boolean;
+  tickerSpeed: "SLOW" | "NORMAL" | "FAST";
   theme: "DARK" | "LIGHT";
   projectorKey: string;
 };
