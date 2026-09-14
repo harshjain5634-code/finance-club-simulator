@@ -1,20 +1,17 @@
 import {
   ArrowLeftRight,
-  BookOpen,
   BriefcaseBusiness,
   ChartCandlestick,
   ClipboardList,
   Download,
   Gauge,
   LayoutDashboard,
-  ListOrdered,
   Medal,
   MonitorPlay,
   Newspaper,
   ChartPie,
   ReceiptText,
   Settings2,
-  SlidersHorizontal,
   Timer,
   TrendingUp,
   Users,
@@ -84,10 +81,6 @@ export function hostNav(eventId: string): NavGroup[] {
     },
   ];
 }
-
-export const RULES_ICON = BookOpen;
-export const ROUND_ICON = ListOrdered;
-export const SETTINGS_ICON = SlidersHorizontal;
 
 export function isActive(pathname: string, item: NavItem) {
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);

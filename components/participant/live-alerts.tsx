@@ -92,7 +92,7 @@ export function BreakingNewsAlert({ state, code }: { state: EventState; code: st
 }
 
 /** Toasts when a new proposal arrives for this team or one of its proposals changes state. */
-export function ProposalNotifier({ state, teamId, code }: { state: EventState; teamId: string; code: string }) {
+export function ProposalNotifier({ state, teamId }: { state: EventState; teamId: string }) {
   const incoming = state.proposals.filter((p) => p.counterpartyTeamId === teamId);
   const name = teamNameOf(state);
   const symbol = symbolOf(state);
@@ -126,7 +126,6 @@ export function ProposalNotifier({ state, teamId, code }: { state: EventState; t
     }
   });
 
-  void code;
   return null;
 }
 

@@ -3,7 +3,7 @@
 import { useNow } from "@/lib/mock/hooks";
 import { formatDuration } from "@/lib/format";
 import { currentRound, deriveMarketState, roundRemainingMs } from "@/lib/domain/trading-gate";
-import type { EventState, Round } from "@/lib/domain/types";
+import type { EventState } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
 
 export function useRoundClock(state: EventState) {
@@ -12,11 +12,6 @@ export function useRoundClock(state: EventState) {
   const remaining = round ? roundRemainingMs(round, now) : 0;
   const elapsedPct = round && round.durationSeconds > 0 ? Math.min(100, Math.max(0, 100 - (remaining / (round.durationSeconds * 1000)) * 100)) : 0;
   return { now, round, remaining, elapsedPct, marketState: deriveMarketState(state.event, round, now) };
-}
-
-export function roundLabel(round: Round | null, short = false) {
-  if (!round) return short ? "No round" : "No round started";
-  return short ? `R${round.number} · ${round.name}` : `Round ${round.number} · ${round.name}`;
 }
 
 export function RoundCountdown({ state, className }: { state: EventState; className?: string }) {

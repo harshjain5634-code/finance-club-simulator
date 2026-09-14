@@ -182,7 +182,7 @@ function TerminalFrame({ state, code, teamId, children }: { state: EventState; c
     >
       {children}
       <BreakingNewsAlert state={state} code={code} />
-      <ProposalNotifier state={state} teamId={teamId} code={code} />
+      <ProposalNotifier state={state} teamId={teamId} />
     </AppFrame>
   );
 }

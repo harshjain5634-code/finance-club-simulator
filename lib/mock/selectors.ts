@@ -1,6 +1,6 @@
 import { actorLabel } from "@/lib/domain/audit";
-import { isTeamAccount, teamAccount } from "@/lib/domain/ledger";
-import { computeLeaderboard, publishedLeaderboard } from "@/lib/domain/leaderboard";
+import { teamAccount } from "@/lib/domain/ledger";
+import { computeLeaderboard } from "@/lib/domain/leaderboard";
 import { changePct } from "@/lib/domain/money";
 import { holdingsValue, netWorth, returnPct, teamCash, teamHoldings, type HoldingView } from "@/lib/domain/portfolio";
 import { currentRound } from "@/lib/domain/trading-gate";
@@ -129,10 +129,6 @@ export function teamSummary(state: EventState, teamId: string): TeamSummary | nu
   };
 }
 
-export function publishedRankOf(state: EventState, teamId: string) {
-  return publishedLeaderboard(state).rows.find((r) => r.teamId === teamId) ?? null;
-}
-
 export function movers(state: EventState, limit = 5) {
   const rows = instrumentRows(state, { enabledOnly: true });
   const gainers = rows.filter((r) => r.roundChangePct > 0).sort((a, b) => b.roundChangePct - a.roundChangePct).slice(0, limit);
@@ -182,11 +178,6 @@ export function describeActor(state: EventState, actor: AuditEvent["actor"]) {
   return actorLabel(actor, teamNameOf(state));
 }
 
-export function counterpartyLabel(state: EventState, proposal: TradeProposal, perspectiveTeamId: string) {
-  const other = proposal.proposerTeamId === perspectiveTeamId ? proposal.counterpartyTeamId : proposal.proposerTeamId;
-  return teamNameOf(state)(other);
-}
-
 /** From a team's perspective: does this proposal make them the buyer? */
 export function isBuyerFor(proposal: TradeProposal, teamId: string) {
   return proposal.proposerTeamId === teamId ? proposal.side === "BUY" : proposal.side === "SELL";
@@ -195,8 +186,4 @@ export function isBuyerFor(proposal: TradeProposal, teamId: string) {
 export function tradingVolume(state: EventState, roundId: string | null) {
   const trades = roundId ? state.trades.filter((t) => t.roundId === roundId) : state.trades;
   return { count: trades.length, value: trades.reduce((sum, t) => sum + t.value, 0) };
-}
-
-export function systemAccountsTouched(journal: LedgerJournal) {
-  return journal.postings.filter((p) => !isTeamAccount(p.account)).map((p) => p.account);
 }
