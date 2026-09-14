@@ -80,9 +80,7 @@ export function NewsScreen() {
         <>
           <section aria-label="Latest story">
             <p className="mb-2 text-[11px] font-semibold tracking-[0.12em] text-fg-muted uppercase">Latest</p>
-            <Card className="p-1.5">
-              <LeadStory state={state} release={latest} now={now} size="lg" />
-            </Card>
+            <LeadStory state={state} release={latest} now={now} size="lg" />
           </section>
           {earlier.length > 0 && (
             <Card>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowDown, ArrowUp, Check, Copy, Library, Lock, Pencil, Plus, RefreshCw, Trash } from "lucide-react";
 import { generateHistory } from "@/data/mock-history";
 import { catalogueInstrument, REAL_CATALOGUE } from "@/data/scenarios/catalogue";
@@ -26,7 +27,7 @@ import type { AllocationDistribution, AllocationMode, AllocationRow, EventRules,
 import { formatQuantity } from "@/lib/format";
 import { applyAllocations, createInstrument, saveAllocationPlan, saveRounds, updateGeneralSettings, updateInstrument } from "@/lib/mock/commands";
 import { cn } from "@/lib/utils";
-import { hostAction, useHostEvent } from "./host-context";
+import { hostAction, hostBase, useHostEvent } from "./host-context";
 
 const editable = (state: EventState) => state.event.status === "DRAFT" || state.event.status === "READY";
 
@@ -106,8 +107,14 @@ function GeneralForm({ state }: { state: EventState }) {
                 size="md"
               />
             </Field>
-            <Field label="News mode">
-              <SegmentedControl options={[{ value: "MANUAL", label: "Manual release" }, { value: "AUTO", label: "Automatic · Phase 11", disabled: true }]} value="MANUAL" onChange={() => {}} label="News mode" size="md" />
+            <Field label="News release">
+              <p className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg-secondary">
+                <Badge tone={state.randomNews.mode === "RANDOM" ? "accent" : "neutral"}>{state.randomNews.mode === "RANDOM" ? "Random" : "Manual"}</Badge>
+                Switch between manual and random release live from the
+                <Link href={`${hostBase(state.event.id)}/news`} className="font-medium text-accent hover:underline">
+                  news desk
+                </Link>
+              </p>
             </Field>
           </div>
         </FormSection>

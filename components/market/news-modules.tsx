@@ -35,7 +35,8 @@ export function ImpactRow({ state, impact, size = "md" }: { state: EventState; i
 
 function roundLabelOf(state: EventState, roundId: string | null) {
   const round = state.rounds.find((r) => r.id === roundId);
-  return round ? `Round ${round.number}` : "Pre-round";
+  if (!round) return "Between rounds";
+  return round.type === "BRIEFING" ? "Briefing" : `Round ${round.number}`;
 }
 
 /** Prominent dashboard module: the latest story emphasised, 2–3 earlier stories underneath. */
@@ -97,7 +98,8 @@ export function LeadStory({ state, release, now, size = "md" }: { state: EventSt
       key={release.id}
       className={cn(
         "rounded-lg border px-4 py-3.5 transition-colors duration-700",
-        fresh ? "border-warning/50 bg-warning/6 animate-pop-in" : "border-border bg-surface-raised/50",
+        fresh ? "border-warning/50 bg-warning/6 animate-pop-in" : size === "lg" ? "border-border bg-surface" : "border-border bg-surface-raised/50",
+        size === "lg" && "px-5 py-4",
       )}
     >
       <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">

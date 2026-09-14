@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/misc";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -37,7 +38,7 @@ function timeCell(at: number, now?: number) {
 
 /* ───────── Holdings ───────── */
 
-export function HoldingsTable({ state, holdings, stockHref, showAllocation = true }: { state: EventState; holdings: HoldingView[]; stockHref?: (symbol: string) => string; showAllocation?: boolean }) {
+export function HoldingsTable({ state, holdings, stockHref, showAllocation = true, empty = "No holdings." }: { state: EventState; holdings: HoldingView[]; stockHref?: (symbol: string) => string; showAllocation?: boolean; empty?: ReactNode }) {
   const totals = holdings.reduce((acc, h) => ({ value: acc.value + h.value, basis: acc.basis + h.costBasis }), { value: 0, basis: 0 });
   const columns: Column<HoldingView>[] = [
     {
@@ -98,7 +99,7 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
       rowKey={(h) => h.instrumentId}
       initialSort={{ key: "value", direction: "desc" }}
       minWidth={showAllocation ? 1000 : 900}
-      empty="No holdings."
+      empty={empty}
       footer={
         holdings.length > 0 ? (
           <tfoot>

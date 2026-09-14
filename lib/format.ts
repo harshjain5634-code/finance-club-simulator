@@ -44,6 +44,15 @@ export function formatDuration(ms: number) {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
 }
 
+/** "30 sec", "2–5 min", "90 sec–3 min" — for gaps between events such as random news. */
+export function formatGapRange(minSeconds: number, maxSeconds: number) {
+  const unit = (s: number) => (s % 60 === 0 ? `${s / 60} min` : `${s} sec`);
+  if (minSeconds === maxSeconds) return unit(minSeconds);
+  if (minSeconds % 60 === 0 && maxSeconds % 60 === 0) return `${minSeconds / 60}–${maxSeconds / 60} min`;
+  if (minSeconds % 60 !== 0 && maxSeconds % 60 !== 0) return `${minSeconds}–${maxSeconds} sec`;
+  return `${unit(minSeconds)}–${unit(maxSeconds)}`;
+}
+
 export function formatMinutes(seconds: number) {
   if (seconds % 60 === 0) return `${seconds / 60} min`;
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;

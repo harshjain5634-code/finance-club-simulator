@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeftRight, Newspaper, TrendingUp, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -23,6 +23,8 @@ export function OnboardingDialog({ eventId, teamId, eventName, teamName }: { eve
     }
   });
 
+  const startButton = useRef<HTMLButtonElement>(null);
+
   const dismiss = () => {
     try {
       localStorage.setItem(storageKey(eventId, teamId), "done");
@@ -39,12 +41,16 @@ export function OnboardingDialog({ eventId, teamId, eventName, teamName }: { eve
           title={`Welcome, ${teamName}`}
           description={`${eventName} in three steps.`}
           size="md"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            startButton.current?.focus();
+          }}
           footer={
             <>
               <Button variant="ghost" onClick={dismiss}>
                 Skip
               </Button>
-              <Button variant="primary" size="lg" onClick={dismiss}>
+              <Button ref={startButton} variant="primary" size="lg" onClick={dismiss}>
                 Start trading
               </Button>
             </>

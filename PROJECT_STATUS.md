@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-09-14 · branch `phase1-full-prototype` · Phase 1 complete_
+_Last updated: 2026-09-14 · branch `phase1-ux-refinement` (on top of `phase1-full-prototype`) · Phase 1 complete + UX refinement pass_
 
 Finance Club Stock Market Simulation Platform. **Phase 1 = frontend prototype + mock domain logic only.** It has no database, auth, backend APIs, WebSockets or market data.
 
@@ -9,7 +9,7 @@ Finance Club Stock Market Simulation Platform. **Phase 1 = frontend prototype + 
 ```bash
 npm install
 npm run dev          # http://localhost:3000
-npm run test         # Vitest: domain + workflow tests (34)
+npm run test         # Vitest: domain + workflow tests (54)
 npm run lint
 npm run typecheck
 npm run build
@@ -19,13 +19,24 @@ Start at **http://localhost:3000/demo** and use the buttons to open the host con
 
 Demo credentials (`/join/FINSIM26`): Alpha Capital `ALPHA`/`4821`, Beta Street `BETA`/`7390`. The full list is on `/demo` and in `data/scenarios/shared.ts`.
 
+### Review URLs (dev server)
+
+| Screen | URL |
+|---|---|
+| Participant dashboard / trade / news | `/join/FINSIM26?demo=ALPHA` (signs in) → `/event/FINSIM26/dashboard` · `/event/FINSIM26/trade` · `/event/FINSIM26/news` |
+| Host control room / news desk / projector control | `/host/events/demo-event` · `/host/events/demo-event/news` · `/host/events/demo-event/display` |
+| Projector (live rotation) | `/event/FINSIM26/projector` |
+| Projector single scenes (local review override) | `?scene=leaderboard` · `?scene=market` · `?scene=news` · `?scene=breaking` (also `standby`, `round`, `movers`, `message`, `final`) |
+
+Team sessions live in `sessionStorage`, so sign a tab in with the `?demo=` link before opening team pages. Breaking news and the news pages need at least one released story: start the event and a round, then release a story.
+
 ## Routes
 
 | Area | Routes |
 |---|---|
 | Entry | `/` · `/join` · `/join/[code]` · `/demo` |
 | Participant | `/event/[code]/dashboard` · `/markets` · `/markets/[symbol]` · `/portfolio` · `/trade` · `/transactions` · `/news` · `/leaderboard` · `/rules` |
-| Projector | `/event/[code]/projector` (optional `?key=`) |
+| Projector | `/event/[code]/projector` (optional `?key=`; `?scene=` shows one scene on that screen only) |
 | Host | `/host` · `/host/events/new` · `/host/events/[eventId]` (control room) · `/teams` · `/teams/[teamId]` · `/trades` · `/news` · `/prices` · `/leaderboard` · `/setup/general` · `/setup/instruments` · `/setup/allocations` · `/setup/rounds` · `/display` · `/audit` · `/exports` |
 
 Demo event: id `demo-event`, code `FINSIM26`. A second sample draft event (`freshers-sprint`, code `FRESH26`) shows the DRAFT state.
@@ -40,9 +51,11 @@ components/
   shell/              AppFrame (sidebar + sticky top bar + mobile drawer), brand, mock-runtime mount
   market/             Shared domain UI: status badges, round clock, value chart, tables (holdings, trades,
                       proposals, ledger, adjustments, leaderboard), widgets (market board, movers, news)
-  participant/        Terminal shell (session guard, breaking news, freeze banner) + screens
-  host/               Host shell (event status bar, freeze control) + control room + all console screens
-  projector/          1920×1080 scaled stage, rotation, ticker, scenes, breaking-news takeover
+  participant/        Terminal shell (session chip, market notice, onboarding), live alerts (breaking-news toast,
+                      proposal notifier), dashboard/trade/portfolio/news/leaderboard screens
+  host/               Host shell + always-visible status bar (live-controls: round/event/freeze actions),
+                      control room, news control panel (manual/random), news desk, projector control, console screens
+  projector/          1920×1080 scaled stage, ticker, scenes, breaking-news and message overlays
   entry/              Join form, team login, demo launcher
 lib/
   domain/             Pure TypeScript domain logic (no React) + unit tests
@@ -62,7 +75,9 @@ scripts/              browser-smoke.mjs (CDP cross-window smoke test)
 - `p2p.ts`:
   - price band, proposal validation, propose/accept/reject/cancel/expire
   - optional host approval, atomic settlement, idempotency
-- `news.ts`: FIXED/RANGE/multi-stock impact resolution, release (resolved once and stored), preview, skip.
+- `news.ts`: FIXED/RANGE/multi-stock impact resolution, release (resolved once and stored, with `source` MANUAL/RANDOM and `scheduledFor`), preview, skip.
+- `random-news.ts`: random release mode. It holds one scheduled story at a time, enforces minimum/maximum gaps and a per-round limit, uses only unused stories from the eligible round and pool, and holds the countdown while the event or round is not running. `tickRandomNews` is called by the scheduler; host overrides are release now, skip, pause, resume and stop.
+- `projector.ts`: the current scene and any overlay are derived from event state plus the clock (rotation anchor, pinned scene, takeover). All screens therefore agree. Also contains the host operations: next/previous, pin/resume, show latest news, show message, clear overlay.
 - `portfolio.ts`: holdings, cost basis and realized P&L, allocations, cash/holding adjustments, team reset, valuation snapshots.
 - `leaderboard.ts`: capital base, return %, ranking and tie-break, rank movement, round P&L, visibility views, frozen snapshot.
 - `lifecycle.ts`: event/round lifecycle, freeze, halt, manual price changes, readiness.
@@ -76,7 +91,7 @@ scripts/              browser-smoke.mjs (CDP cross-window smoke test)
 - **Sync:** each commit posts a **BroadcastChannel** message and every tab re-reads (the `storage` event is a fallback). Hooks use `useSyncExternalStore`.
 - **Commands** (`commands.ts`): the only way the UI mutates state. Each checks permissions, runs a domain operation, and supports idempotency keys. The inputs and `OpResult` outputs are designed to be reused by server actions.
 - **Sessions** (`session.ts`): per-tab team identity in `sessionStorage`.
-- **Scheduler** (`runtime.ts`): one leader tab, chosen by a Web Lock, runs a 1-second loop that ends expired rounds and expires proposals. It stands in for the Phase 4 simulation worker. Team tabs send presence pings for "Teams online".
+- **Scheduler** (`runtime.ts`): one leader tab, chosen by a Web Lock, runs a 1-second loop that ends expired rounds, expires proposals and releases due random news. It stands in for the Phase 4 simulation worker. Team tabs send presence pings for "Teams online".
 - **Exports** (`exports.ts`): CSV built in the browser (UTF-8 with BOM) for trades, proposals, ledger, balances, holdings, price events, news releases, leaderboard and audit.
 
 ## Dependencies added in Phase 1
@@ -98,11 +113,19 @@ Existing: `lucide-react`, `recharts`.
 - [x] 5. `phase1: mock event engine and workflows`
 - [x] 6. `phase1: tests and final stabilization`
 
+UX refinement (branch `phase1-ux-refinement`, based on `4bc15f5`):
+
+- [x] `feat: add random news scheduling`
+- [x] `ux: simplify participant experience`
+- [x] `ux: redesign host control room`
+- [x] `ux: improve projector scenes and controls`
+- [x] `ux: add participant onboarding and final polish`
+
 ## Verification
 
-- `npm run test`: 34 tests (29 domain, 5 workflow) pass
+- `npm run test`: 54 tests pass (49 domain, including 11 random-news and 9 projector tests; 5 workflow)
 - `npm run lint`, `npm run typecheck`, `npm run build`: clean
-- `scripts/browser-smoke.mjs` (production build, headless Chrome, 4 tabs): 57/57 checks, 0 console errors
+- `scripts/browser-smoke.mjs` (production build, headless Chrome, 4 tabs): 86/86 checks, 0 console errors. The run covers onboarding, a news-desk release, projector Next/Pin/Resume/message, random mode (release now plus an automatic release after the 30-second gap) and scene-fit checks.
 - Per-workflow results: `PHASE1_TEST_CHECKLIST.md`
 
 ## Important design decisions
@@ -118,14 +141,35 @@ Existing: `lucide-react`, `recharts`.
 - **Late teams:** teams added after allocation automatically receive the identical allocation.
 - **Demo data:** fixed PINs so docs and the launcher can reference them. Each scenario gives every team exactly ₹10,00,000 of capital.
 - **Projector link:** `?key=` is validated when present; a missing key is allowed in the prototype so the plain URL works.
-- **Out-of-scope options:** Simulated exchange, automatic news, gradual impacts and net-worth ranking appear as disabled "later" options.
+- **Out-of-scope options:** Simulated exchange, gradual impacts and net-worth ranking appear as disabled "later" options.
+- **Random news safety:**
+  - The next release is `max(now + random(min…max), last release + min gap)`, measured from any story, manual or random.
+  - Only one story is scheduled at a time.
+  - The countdown is held while the event or round is not running and resumes afterwards.
+  - A manual release inside the gap pushes the schedule back.
+  - Every release stores its scheduled time, actual time and resolved impact.
+  - Host overrides (release now, skip) are logged.
+- **Projector state is shared, not per screen:**
+  - The host's next/previous/pin/message write to event state, and every projector and the host preview resolve the same scene from the clock.
+  - Overlays (breaking news, messages) remember the interrupted scene and resume it.
+  - Editing scene settings keeps the current scene on screen.
+- **Participant navigation:** six primary items (Dashboard, Markets, Trade, Portfolio, News, Leaderboard) plus Transactions and Rules under "More". Badges appear only for unread news and incoming proposals.
+- **Host navigation:** grouped Live / Market / Setup / Records. Round, trading and event actions live in the status bar on every host page; destructive event actions sit behind the "Event" menu.
+- **Onboarding:** a 3-step dialog shown once per team per event per browser (`localStorage`).
 
 ## Known issues / TODO
 
 - **Browser scope:** cross-window sync and presence only work within one browser profile. The scheduler only runs while at least one tab is open.
 - **No real security:** PINs are plaintext, the host console has no login, and the projector link isn't enforced without `?key=`.
 - **Light theme:** a scaffold only. A forced-light terminal can briefly show dark before the policy applies.
-- **Not click-tested in a browser** (logic is covered by tests): adjustment dialogs, manual price dialogs, approval queue, instrument/rounds/general editors, projector scene reorder, audit filter controls, CSV file download, watchlist, theme toggle.
+- **Not click-tested in a browser** (logic is covered by tests): adjustment dialogs, manual price dialogs, approval queue, instrument/rounds/general editors, projector scene drag-reorder and duration edits, random-news skip/pause/pool switches, news editor, audit filter controls, CSV file download, watchlist, theme toggle.
+- **UX limitations of this pass:**
+  - The breaking-news toast covers the top-right of team screens for up to 15 s (dismissible).
+  - Onboarding is remembered per browser, so a team that switches device sees it again.
+  - Scene drag-reorder needs a mouse; touch devices use the up/down buttons.
+  - The `?scene=` projector override is local to that screen and meant for review only.
+  - The host projector page renders a live 1920×1080 preview, which can be heavy on low-end laptops.
+  - Random news runs only while at least one app tab is open (the leader tab), like the rest of the Phase 1 scheduler.
 - **Rank movement:** teams tie at round start and ties rank alphabetically, so the first price move can show large movements.
 - **Wizard-created teams:** generic names (Team 01…) and sequential PINs. Rename and regenerate them in Teams.
 - **Storage limits:** the audit log is uncapped in localStorage; very long sessions could approach the ~5 MB quota. Valuations are capped at 720 snapshots.

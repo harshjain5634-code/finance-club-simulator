@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Delta } from "@/components/ui/delta";
+import { HelpText } from "@/components/ui/guidance";
 import { PageHeader, StatTile } from "@/components/ui/misc";
 import { HoldingsTable } from "@/components/market/tables";
 import { formatINR, formatPct } from "@/lib/domain/money";
@@ -27,14 +29,24 @@ export function PortfolioScreen() {
 
   return (
     <div className="flex flex-col gap-3">
-      <PageHeader title="Portfolio" description={`${team.name} · valued at current reference prices`} />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <StatTile label="Net worth" value={formatINR(summary.netWorth)} sub="Cash + holdings" />
+      <PageHeader title="Portfolio" description={`${team.name} · valued at current prices`} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile label="Net worth" value={formatINR(summary.netWorth)} sub="Cash + value of your stocks" />
+        <StatTile label="Return" value={formatPct(summary.returnPct)} valueClassName={trend(summary.returnPct)} sub={summary.rank ? `Rank #${summary.rank} · ranking uses return %` : "Ranking uses return %"} />
         <StatTile label="Cash" value={formatINR(summary.cash)} sub={`${formatPct(summary.netWorth ? (summary.cash / summary.netWorth) * 100 : 0, { signed: false, decimals: 1 })} of net worth`} />
-        <StatTile label="Capital base" value={formatINR(summary.capitalBase)} sub="Starting allocation ± capital changes" />
-        <StatTile label="Return" value={formatPct(summary.returnPct)} valueClassName={trend(summary.returnPct)} sub="(Net worth − base) ÷ base" />
-        <StatTile label="Realized P&L" value={<Delta value={summary.realizedPnl} format="inr" />} sub="From completed sales" />
-        <StatTile label="Unrealized P&L" value={<Delta value={summary.unrealizedPnl} format="inr" />} sub="Open positions vs cost" />
+        <StatTile label="Stocks" value={formatINR(summary.holdingsValue)} sub={`${summary.holdings.length} ${summary.holdings.length === 1 ? "position" : "positions"}`} />
+      </div>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-md border border-border bg-surface px-4 py-2.5 text-xs text-fg-muted">
+        <span>
+          Realized P&amp;L <Delta value={summary.realizedPnl} format="inr" className="ml-1" />
+        </span>
+        <span>
+          Unrealized P&amp;L <Delta value={summary.unrealizedPnl} format="inr" className="ml-1" />
+        </span>
+        <span>
+          Capital base <span className="ml-1 font-medium text-fg-secondary tabular-nums">{formatINR(summary.capitalBase)}</span>
+        </span>
+        <HelpText className="basis-full sm:ml-auto sm:basis-auto">Return % = (net worth − capital base) ÷ capital base</HelpText>
       </div>
 
       <Card>
@@ -58,8 +70,20 @@ export function PortfolioScreen() {
       </Card>
 
       <Card>
-        <CardHeader title="Holdings" subtitle={`${summary.holdings.length} positions`} />
-        <HoldingsTable state={state} holdings={summary.holdings} stockHref={stockHref(code)} />
+        <CardHeader title="Holdings" subtitle="Click a stock to see its chart and news" />
+        <HoldingsTable
+          state={state}
+          holdings={summary.holdings}
+          stockHref={stockHref(code)}
+          empty={
+            <span>
+              You don&rsquo;t hold any stocks yet.{" "}
+              <Link href={`/event/${code}/trade?side=BUY`} className="font-medium text-accent hover:underline">
+                Buy from another team
+              </Link>
+            </span>
+          }
+        />
       </Card>
     </div>
   );

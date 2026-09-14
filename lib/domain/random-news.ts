@@ -1,4 +1,4 @@
-import { formatClock } from "../format";
+import { formatClock, formatGapRange } from "../format";
 import { appendAudit } from "./audit";
 import { nextId } from "./ids";
 import { releaseNews } from "./news";
@@ -253,7 +253,7 @@ export function updateRandomNewsSettings(state: EventState, ctx: OpContext, inpu
     clearSchedule(settings);
     scheduleNext(state, ctx);
   }
-  audit(state, ctx, "NEWS_RANDOM_SETTINGS_UPDATED", `Random news: every ${Math.round(settings.minGapSeconds / 60 * 10) / 10}–${Math.round(settings.maxGapSeconds / 60 * 10) / 10} min, max ${settings.maxPerRound} per round`, {
+  audit(state, ctx, "NEWS_RANDOM_SETTINGS_UPDATED", `Random news: every ${formatGapRange(settings.minGapSeconds, settings.maxGapSeconds)}, max ${settings.maxPerRound} per round`, {
     before,
     after: { minGapSeconds: settings.minGapSeconds, maxGapSeconds: settings.maxGapSeconds, maxPerRound: settings.maxPerRound, roundScope: settings.roundScope },
   });
@@ -270,7 +270,7 @@ export function startRandomNews(state: EventState, ctx: OpContext): OpResult {
   if (settings.status === "RUNNING") return ok();
   settings.status = "RUNNING";
   clearSchedule(settings);
-  audit(state, ctx, "NEWS_RANDOM_STARTED", `Random news started (every ${settings.minGapSeconds}–${settings.maxGapSeconds}s, max ${settings.maxPerRound} per round)`);
+  audit(state, ctx, "NEWS_RANDOM_STARTED", `Random news started (every ${formatGapRange(settings.minGapSeconds, settings.maxGapSeconds)}, max ${settings.maxPerRound} per round)`);
   tickRandomNews(state, ctx);
   return ok();
 }

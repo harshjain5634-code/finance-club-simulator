@@ -19,7 +19,7 @@ import { configuredImpactOf } from "@/lib/domain/news";
 import { lastNewsReleaseAt, randomNewsView, validateRandomSettings } from "@/lib/domain/random-news";
 import { currentRound } from "@/lib/domain/trading-gate";
 import type { EventState, NewsItem } from "@/lib/domain/types";
-import { formatClock, formatDuration, formatRelative } from "@/lib/format";
+import { formatClock, formatDuration, formatGapRange, formatRelative } from "@/lib/format";
 import {
   pauseRandomNews,
   releaseRandomNewsNow,
@@ -217,7 +217,7 @@ function RandomBody({ state, now }: { state: EventState; now: number }) {
         </div>
         <div className="text-right text-xs text-fg-muted">
           <p>
-            Every {formatDuration(random.minGapSeconds * 1000)}–{formatDuration(random.maxGapSeconds * 1000)}
+            Every {formatGapRange(random.minGapSeconds, random.maxGapSeconds)}
             <InfoTip className="ml-1 align-middle" content="The next story is scheduled at a random moment inside this gap, and never sooner than the minimum gap after the previous story." />
           </p>
           <p>

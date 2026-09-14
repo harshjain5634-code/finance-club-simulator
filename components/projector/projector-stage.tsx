@@ -68,11 +68,15 @@ export function ProjectorStage({ state, joinUrl, preview = false, override = nul
           </div>
         </div>
         <div className="flex items-center gap-8">
-          <div className="text-right">
-            <p className="text-[15px] tracking-[0.16em] text-fg-muted uppercase">{round ? roundLabel(state, round) : "Round"}</p>
-            <p className="text-[24px] leading-tight font-semibold text-fg-primary">{round?.name ?? "Not started"}</p>
-          </div>
-          <p className={cn("w-[190px] text-right font-mono text-[48px] leading-none font-semibold tabular-nums", !active ? "text-fg-muted" : round?.status === "RUNNING" && remaining <= 60_000 ? "text-warning" : "text-fg-primary")}>{active ? formatDuration(remaining) : "--:--"}</p>
+          {marketState !== "NOT_STARTED" && marketState !== "COMPLETED" && (
+            <>
+              <div className="text-right">
+                <p className="text-[15px] tracking-[0.16em] text-fg-muted uppercase">{roundLabel(state, round)}</p>
+                <p className="text-[24px] leading-tight font-semibold text-fg-primary">{round?.name ?? "Between rounds"}</p>
+              </div>
+              <p className={cn("w-[190px] text-right font-mono text-[48px] leading-none font-semibold tabular-nums", !active ? "text-fg-muted" : round?.status === "RUNNING" && remaining <= 60_000 ? "text-warning" : "text-fg-primary")}>{active ? formatDuration(remaining) : "--:--"}</p>
+            </>
+          )}
           <span className={cn("flex items-center gap-2.5 rounded-lg border-2 px-4 py-2 text-[20px] font-semibold", warning ? "border-warning/60 bg-warning/10 text-warning" : marketState === "OPEN" ? "border-accent/50 bg-accent/10 text-fg-primary" : "border-border-strong text-fg-secondary")}>
             <span className={cn("size-3 rounded-full", marketState === "OPEN" ? "animate-pulse-dot bg-accent" : warning ? "bg-warning" : "bg-fg-muted")} />
             {MARKET_STATE_LABEL[marketState]}
@@ -91,7 +95,7 @@ export function ProjectorStage({ state, joinUrl, preview = false, override = nul
         {scene === "FINAL_RESULTS" && <FinalResultsScene state={state} />}
       </main>
 
-      {state.event.projector.tickerEnabled && <TickerStrip state={state} />}
+      {state.event.projector.tickerEnabled && <TickerStrip state={state} label={marketState === "COMPLETED" ? "Final" : marketState === "NOT_STARTED" ? "Prices" : "Live"} />}
       {takeover && <Takeover state={state} takeover={takeover} />}
       {preview && (
         <span className="absolute top-3 right-3 rounded-md bg-surface-raised/90 px-3 py-1.5 text-[18px] text-fg-secondary">
@@ -110,13 +114,13 @@ function overrideTakeover(state: EventState, override: StageOverride): ActiveTak
   return { kind: "NEWS", release, remainingMs: durationSeconds * 1000, takeover: { kind: "NEWS", releaseId: release.id, startedAt: release.releasedAt, durationSeconds } };
 }
 
-function TickerStrip({ state }: { state: EventState }) {
+function TickerStrip({ state, label }: { state: EventState; label: string }) {
   const rows = instrumentRows(state, { enabledOnly: true });
   const items = [...rows, ...rows];
   const seconds = Math.max(30, rows.length * 6) * TICKER_FACTOR[state.event.projector.tickerSpeed];
   return (
     <footer className="flex h-[56px] shrink-0 items-center overflow-hidden border-t-2 border-border bg-surface">
-      <span className="z-10 flex h-full shrink-0 items-center bg-accent-strong px-6 text-[18px] font-bold tracking-[0.16em] text-white uppercase">Live</span>
+      <span className="z-10 flex h-full shrink-0 items-center bg-accent-strong px-6 text-[18px] font-bold tracking-[0.16em] text-white uppercase">{label}</span>
       <div className="relative flex-1 overflow-hidden">
         <div className="flex w-max animate-ticker items-center gap-12 pl-8 whitespace-nowrap" style={{ animationDuration: `${seconds}s` }}>
           {items.map((row, index) => (
@@ -150,6 +154,7 @@ function Takeover({ state, takeover }: { state: EventState; takeover: ActiveTake
 
   const { release } = takeover;
   const impacts = release.impacts.slice(0, 4);
+  const releaseRound = state.rounds.find((r) => r.id === release.roundId);
   return (
     <div role="alert" aria-live="assertive" className="absolute inset-0 z-20 flex animate-takeover-in flex-col bg-canvas">
       <div className="flex h-[76px] shrink-0 items-center justify-between bg-warning px-12 text-warning-fg">
@@ -159,13 +164,13 @@ function Takeover({ state, takeover }: { state: EventState; takeover: ActiveTake
         </span>
         <span className="font-mono text-[26px] font-semibold">{formatClock(release.releasedAt, true)}</span>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[1.25fr_1fr] gap-12 px-14 py-12">
-        <div className="flex min-h-0 flex-col justify-center">
-          <p className="text-[18px] font-semibold tracking-[0.16em] text-fg-muted uppercase">{state.rounds.find((r) => r.id === release.roundId)?.name ?? state.event.name}</p>
-          <h1 className="mt-3 line-clamp-4 text-[60px] leading-[1.08] font-semibold tracking-tight text-fg-primary">{release.headline}</h1>
-          {release.body && <p className="mt-6 line-clamp-4 text-[26px] leading-relaxed text-fg-secondary">{release.body}</p>}
+      <div className="grid min-h-0 flex-1 grid-cols-[1.3fr_1fr] items-center gap-14 px-14 py-12">
+        <div className="flex min-h-0 flex-col">
+          <p className="text-[20px] font-semibold tracking-[0.16em] text-warning uppercase">{releaseRound ? `${roundLabel(state, releaseRound)} · ${releaseRound.name}` : state.event.name}</p>
+          <h1 className="mt-4 line-clamp-4 text-[72px] leading-[1.05] font-semibold tracking-tight text-fg-primary">{release.headline}</h1>
+          {release.body && <p className="mt-7 line-clamp-4 border-l-4 border-warning/60 pl-6 text-[30px] leading-snug text-fg-secondary">{release.body}</p>}
         </div>
-        <div className="flex min-h-0 flex-col justify-center">
+        <div className="flex min-h-0 flex-col">
           <p className="mb-4 text-[18px] font-semibold tracking-[0.16em] text-fg-muted uppercase">{impacts.length ? "Price reaction" : "Market impact"}</p>
           {impacts.length === 0 ? (
             <p className="rounded-2xl border-2 border-border bg-surface px-8 py-7 text-[28px] text-fg-secondary">No direct price impact</p>

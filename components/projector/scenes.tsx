@@ -104,7 +104,7 @@ export function RoundStatusScene({ state, marketState, remaining, elapsedPct, no
           {marketState === "OPEN" ? "Trading open" : marketState === "FROZEN" ? "Trading frozen" : MARKET_STATE_LABEL[marketState]}
         </div>
       </div>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col justify-center gap-6">
         <div className="rounded-2xl border-2 border-border bg-surface px-8 py-6">
           <p className="text-[16px] font-semibold tracking-[0.16em] text-fg-muted uppercase">Schedule</p>
           <ol className="mt-3">
@@ -322,13 +322,13 @@ export function NewsWallScene({ state, now }: { state: EventState; now: number }
         <div className="grid flex-1 place-items-center rounded-2xl border-2 border-dashed border-border-strong text-[32px] text-fg-muted">No news released yet</div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-[1.35fr_1fr] gap-8">
-          <article className="flex min-h-0 flex-col rounded-2xl border-2 border-accent/40 bg-surface px-10 py-8">
+          <article className="flex min-h-0 flex-col self-start rounded-2xl border-2 border-accent/40 bg-surface px-10 py-8">
             <p className="text-[18px] text-fg-muted">
               <span className="font-semibold text-accent uppercase">Latest</span> · {formatClock(lead.releasedAt)} · {formatRelative(lead.releasedAt, now)}
             </p>
             <h3 className="mt-3 line-clamp-3 text-[44px] leading-[1.12] font-semibold text-fg-primary">{lead.headline}</h3>
             {lead.body && <p className="mt-4 line-clamp-3 text-[22px] leading-relaxed text-fg-secondary">{lead.body}</p>}
-            <div className="mt-auto flex flex-col gap-3 border-t-2 border-border pt-5">
+            <div className="mt-7 flex flex-col gap-3 border-t-2 border-border pt-5">
               {lead.impacts.slice(0, 4).map((impact) => (
                 <ProjectorImpactRow key={impact.instrumentId} state={state} impact={impact} />
               ))}

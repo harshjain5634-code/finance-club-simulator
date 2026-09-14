@@ -275,7 +275,7 @@ export function CreateEventWizard() {
                 />
               </FormatRow>
               <FormatRow label="News" description="How news is released.">
-                <SegmentedControl options={[{ value: "MANUAL", label: "Manual release" }, { value: "AUTO", label: "Automatic · coming later", disabled: true }]} value="MANUAL" onChange={() => {}} label="News mode" size="md" />
+                <p className="text-[13px] text-fg-secondary">Stories start in manual mode. During the event you can switch to random release (safe gaps, one story at a time) from the news desk.</p>
               </FormatRow>
             </div>
           )}

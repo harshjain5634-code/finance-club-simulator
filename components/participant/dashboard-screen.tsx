@@ -213,7 +213,7 @@ function Metric({ label, value, sub, valueClassName, className }: { label: strin
   return (
     <div className={cn("min-w-0 px-4 py-3.5", className)}>
       <p className="text-xs font-medium text-fg-secondary">{label}</p>
-      <p className={cn("mt-1 truncate text-[22px] leading-7 font-semibold tracking-tight text-fg-primary tabular-nums", valueClassName)}>{value}</p>
+      <p className={cn("mt-1 truncate text-lg leading-7 font-semibold tracking-tight text-fg-primary tabular-nums sm:text-[22px]", valueClassName)}>{value}</p>
       <div className="mt-0.5 truncate text-xs text-fg-muted">{sub}</div>
     </div>
   );
