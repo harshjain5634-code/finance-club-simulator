@@ -1,59 +1,94 @@
 import {
   ArrowLeftRight,
+  BookOpen,
   BriefcaseBusiness,
   ChartCandlestick,
-  CircleQuestionMark,
+  ClipboardList,
+  Download,
+  Gauge,
   LayoutDashboard,
+  ListOrdered,
   Medal,
-  Settings,
-  Star,
-  Trophy,
+  MonitorPlay,
+  Newspaper,
+  ChartPie,
+  ReceiptText,
+  Settings2,
+  SlidersHorizontal,
+  Timer,
+  TrendingUp,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  badge?: string;
-};
+export type NavItem = { label: string; href: string; icon: LucideIcon; exact?: boolean; badgeKey?: string };
+export type NavGroup = { label?: string; items: NavItem[] };
 
-export type NavGroup = {
-  label: string;
-  items: NavItem[];
-};
-
-export const primaryNav: NavGroup[] = [
-  {
-    label: "Trading",
-    items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { label: "Markets", href: "/markets", icon: ChartCandlestick },
-      { label: "Portfolio", href: "/portfolio", icon: BriefcaseBusiness },
-      { label: "Trade", href: "/trade", icon: ArrowLeftRight },
-      { label: "Watchlist", href: "/watchlist", icon: Star },
-    ],
-  },
-  {
-    label: "Club",
-    items: [
-      { label: "Leaderboard", href: "/leaderboard", icon: Medal },
-      { label: "Competition", href: "/competition", icon: Trophy, badge: "Live" },
-    ],
-  },
-];
-
-export const secondaryNav: NavItem[] = [
-  { label: "Help", href: "/help", icon: CircleQuestionMark },
-  { label: "Settings", href: "/settings", icon: Settings },
-];
-
-export const allNavItems: NavItem[] = [...primaryNav.flatMap((group) => group.items), ...secondaryNav];
-
-export function isNavItemActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+export function participantNav(code: string): NavGroup[] {
+  const base = `/event/${code}`;
+  return [
+    {
+      label: "Terminal",
+      items: [
+        { label: "Dashboard", href: `${base}/dashboard`, icon: LayoutDashboard },
+        { label: "Markets", href: `${base}/markets`, icon: ChartCandlestick },
+        { label: "Portfolio", href: `${base}/portfolio`, icon: BriefcaseBusiness },
+        { label: "Trade", href: `${base}/trade`, icon: ArrowLeftRight, badgeKey: "incoming" },
+        { label: "Transactions", href: `${base}/transactions`, icon: ReceiptText },
+        { label: "News", href: `${base}/news`, icon: Newspaper, badgeKey: "news" },
+        { label: "Leaderboard", href: `${base}/leaderboard`, icon: Medal },
+      ],
+    },
+  ];
 }
 
-export function findNavItem(pathname: string) {
-  return allNavItems.find((item) => isNavItemActive(pathname, item.href));
+export function participantTitle(pathname: string, code: string): string {
+  const base = `/event/${code}`;
+  if (pathname.startsWith(`${base}/markets/`)) return "Stock detail";
+  const item = participantNav(code)[0].items.find((i) => pathname.startsWith(i.href));
+  if (item) return item.label;
+  if (pathname.startsWith(`${base}/rules`)) return "Rules";
+  return "Dashboard";
+}
+
+export function hostNav(eventId: string): NavGroup[] {
+  const base = `/host/events/${eventId}`;
+  return [
+    {
+      label: "Live",
+      items: [
+        { label: "Control Room", href: base, icon: Gauge, exact: true },
+        { label: "Teams", href: `${base}/teams`, icon: Users },
+        { label: "Trade Monitor", href: `${base}/trades`, icon: ArrowLeftRight, badgeKey: "approvals" },
+        { label: "News Desk", href: `${base}/news`, icon: Newspaper },
+        { label: "Prices", href: `${base}/prices`, icon: TrendingUp },
+        { label: "Leaderboard", href: `${base}/leaderboard`, icon: Medal },
+      ],
+    },
+    {
+      label: "Setup",
+      items: [
+        { label: "General", href: `${base}/setup/general`, icon: Settings2 },
+        { label: "Instruments", href: `${base}/setup/instruments`, icon: ChartCandlestick },
+        { label: "Allocations", href: `${base}/setup/allocations`, icon: ChartPie },
+        { label: "Rounds", href: `${base}/setup/rounds`, icon: Timer },
+        { label: "Projector", href: `${base}/display`, icon: MonitorPlay },
+      ],
+    },
+    {
+      label: "Records",
+      items: [
+        { label: "Audit Log", href: `${base}/audit`, icon: ClipboardList },
+        { label: "Exports", href: `${base}/exports`, icon: Download },
+      ],
+    },
+  ];
+}
+
+export const RULES_ICON = BookOpen;
+export const ROUND_ICON = ListOrdered;
+export const SETTINGS_ICON = SlidersHorizontal;
+
+export function isActive(pathname: string, item: NavItem) {
+  return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }

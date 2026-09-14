@@ -1,46 +1,69 @@
 @import "tailwindcss";
 
+/*
+ * Semantic design tokens. Components only use these names (bg-surface, text-fg-secondary, border-border…),
+ * so a theme is just a different set of values. Dark is the production theme.
+ */
 @theme {
   --color-canvas: #0b0f16;
   --color-surface: #111620;
   --color-surface-raised: #161c28;
   --color-surface-hover: #1a2130;
-  --color-line: #1f2633;
-  --color-line-strong: #2b3444;
+  --color-border: #1f2633;
+  --color-border-strong: #2b3444;
 
-  --color-fg: #e6eaf1;
-  --color-fg-muted: #a1aabb;
-  --color-fg-subtle: #7a8497;
+  --color-fg-primary: #e6eaf1;
+  --color-fg-secondary: #a1aabb;
+  --color-fg-muted: #7a8497;
 
   --color-accent: #4b8bf5;
   --color-accent-strong: #2f6fde;
   --color-accent-strong-hover: #3a7aea;
+  --color-accent-fg: #ffffff;
 
   --color-positive: #22c55e;
   --color-negative: #f05252;
+  --color-warning: #f5a524;
+  --color-warning-strong: #e8940c;
+  --color-warning-fg: #1c1405;
+
+  --color-overlay: rgb(3 6 12 / 0.72);
 
   --animate-fade-in: fade-in 140ms ease-out both;
+  --animate-pop-in: pop-in 160ms ease-out both;
   --animate-pulse-dot: pulse-dot 2s ease-in-out infinite;
+  --animate-slide-in-right: slide-in-right 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-ticker: ticker 60s linear infinite;
+  --animate-takeover-in: takeover-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-flash: flash 1.2s ease-out both;
 
   @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
-
+  @keyframes pop-in {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
   @keyframes pulse-dot {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.35;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes ticker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes takeover-in {
+    from { opacity: 0; transform: scale(1.03); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes flash {
+    from { background-color: color-mix(in srgb, var(--color-accent) 22%, transparent); }
+    to { background-color: transparent; }
   }
 }
 
@@ -49,15 +72,38 @@
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Light theme scaffold: same token names, different values. Not design-polished in Phase 1. */
+[data-theme="light"] {
+  color-scheme: light;
+  --color-canvas: #f3f5f8;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f7f8fa;
+  --color-surface-hover: #edf0f4;
+  --color-border: #e1e5eb;
+  --color-border-strong: #cbd2dc;
+  --color-fg-primary: #121722;
+  --color-fg-secondary: #475163;
+  --color-fg-muted: #667085;
+  --color-accent: #2563eb;
+  --color-accent-strong: #2563eb;
+  --color-accent-strong-hover: #1d4ed8;
+  --color-positive: #15803d;
+  --color-negative: #dc2626;
+  --color-warning: #b45309;
+  --color-warning-strong: #b45309;
+  --color-warning-fg: #ffffff;
+  --color-overlay: rgb(15 23 42 / 0.45);
+}
+
 @layer base {
   html {
     color-scheme: dark;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-border-strong) transparent;
   }
 
   body {
     background-color: var(--color-canvas);
-    color: var(--color-fg);
+    color: var(--color-fg-primary);
     font-family: var(--font-sans);
   }
 
@@ -75,8 +121,34 @@
   }
 
   button:not(:disabled),
-  [role="button"]:not(:disabled) {
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
     cursor: pointer;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    background: white;
+    color: black;
   }
 }
 

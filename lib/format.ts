@@ -1,97 +1,76 @@
-const MINUS = "−";
 const TIME_ZONE = "Asia/Kolkata";
-
-const numberFormatters = new Map<number, Intl.NumberFormat>();
-
-function groupedNumber(value: number, decimals: number) {
-  let formatter = numberFormatters.get(decimals);
-  if (!formatter) {
-    formatter = new Intl.NumberFormat("en-IN", {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    });
-    numberFormatters.set(decimals, formatter);
-  }
-  return formatter.format(value);
-}
-
-// Rounds before checking the sign so values like -0.001 never render as "−0.00".
-function signOf(value: number, decimals: number) {
-  const rounded = Number(value.toFixed(decimals));
-  if (rounded > 0) return "+";
-  if (rounded < 0) return MINUS;
-  return "";
-}
-
-export type Trend = "positive" | "negative" | "neutral";
-
-export function trendOf(value: number, decimals = 2): Trend {
-  const sign = signOf(value, decimals);
-  if (sign === "+") return "positive";
-  if (sign === MINUS) return "negative";
-  return "neutral";
-}
-
-export function formatCurrency(value: number, decimals = 2) {
-  const sign = signOf(value, decimals) === MINUS ? MINUS : "";
-  return `${sign}₹${groupedNumber(Math.abs(value), decimals)}`;
-}
-
-export function formatSignedCurrency(value: number, decimals = 2) {
-  return `${signOf(value, decimals)}₹${groupedNumber(Math.abs(value), decimals)}`;
-}
-
-export function formatNumber(value: number, decimals = 2) {
-  const sign = signOf(value, decimals) === MINUS ? MINUS : "";
-  return `${sign}${groupedNumber(Math.abs(value), decimals)}`;
-}
-
-export function formatSignedNumber(value: number, decimals = 2) {
-  return `${signOf(value, decimals)}${groupedNumber(Math.abs(value), decimals)}`;
-}
-
-export function formatPercent(value: number, { decimals = 2, signed = true } = {}) {
-  const sign = signed ? signOf(value, decimals) : signOf(value, decimals) === MINUS ? MINUS : "";
-  return `${sign}${Math.abs(value).toFixed(decimals)}%`;
-}
-
-export function formatCompactCurrency(value: number) {
-  const abs = Math.abs(value);
-  const sign = value < 0 ? MINUS : "";
-  if (abs >= 1e7) return `${sign}₹${(abs / 1e7).toFixed(2)}Cr`;
-  if (abs >= 1e5) return `${sign}₹${(abs / 1e5).toFixed(2)}L`;
-  if (abs >= 1e3) return `${sign}₹${(abs / 1e3).toFixed(1)}K`;
-  return `${sign}₹${abs.toFixed(0)}`;
-}
-
-const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+const formatters = new Map<string, Intl.DateTimeFormat>();
 
 export function formatDate(timestamp: number, options: Intl.DateTimeFormatOptions) {
   const key = JSON.stringify(options);
-  let formatter = dateTimeFormatters.get(key);
+  let formatter = formatters.get(key);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat("en-IN", { timeZone: TIME_ZONE, ...options });
-    dateTimeFormatters.set(key, formatter);
+    formatters.set(key, formatter);
   }
   return formatter.format(timestamp);
 }
 
-export function formatClockTime(timestamp: number) {
-  return formatDate(timestamp, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+export function formatClock(timestamp: number, withSeconds = false) {
+  return formatDate(timestamp, {
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(withSeconds ? { second: "2-digit" } : {}),
+    hourCycle: "h23",
+  });
+}
+
+export function formatDateTime(timestamp: number) {
+  return formatDate(timestamp, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
 }
 
 export function formatShortDate(timestamp: number) {
   return formatDate(timestamp, { day: "numeric", month: "short" });
 }
 
-const IST_OFFSET_MS = 330 * 60_000;
-const DAY_MS = 86_400_000;
-
-export function calendarDaysBetween(from: number, to: number) {
-  return Math.floor((to + IST_OFFSET_MS) / DAY_MS) - Math.floor((from + IST_OFFSET_MS) / DAY_MS);
+export function formatLongDate(isoDate: string) {
+  const time = Date.parse(`${isoDate}T12:00:00Z`);
+  if (Number.isNaN(time)) return isoDate;
+  return formatDate(time, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
-export function isSameDay(a: number, b: number) {
-  const opts: Intl.DateTimeFormatOptions = { year: "numeric", month: "2-digit", day: "2-digit" };
-  return formatDate(a, opts) === formatDate(b, opts);
+/** 12:34 or 1:02:03 */
+export function formatDuration(ms: number) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+}
+
+export function formatMinutes(seconds: number) {
+  if (seconds % 60 === 0) return `${seconds / 60} min`;
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
+
+export function formatRelative(timestamp: number, now: number) {
+  const diff = Math.max(0, now - timestamp);
+  if (diff < 10_000) return "just now";
+  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return formatShortDate(timestamp);
+}
+
+export function formatQuantity(quantity: number) {
+  return new Intl.NumberFormat("en-IN").format(quantity);
+}
+
+export function titleCase(value: string) {
+  return value
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+export function initials(name: string) {
+  const words = name.trim().split(/\s+/);
+  return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? words[0]?.[1] ?? "")).toUpperCase();
 }

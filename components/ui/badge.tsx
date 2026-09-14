@@ -1,17 +1,25 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-export type BadgeTone = "neutral" | "accent" | "positive" | "negative" | "outline";
+export type BadgeTone = "neutral" | "accent" | "positive" | "negative" | "warning" | "outline" | "solid";
 
 const tones: Record<BadgeTone, string> = {
-  neutral: "bg-surface-hover text-fg-muted",
+  neutral: "bg-surface-hover text-fg-secondary",
   accent: "bg-accent/12 text-accent",
   positive: "bg-positive/10 text-positive",
   negative: "bg-negative/10 text-negative",
-  outline: "border border-line-strong text-fg-muted",
+  warning: "bg-warning/12 text-warning",
+  outline: "border border-border-strong text-fg-secondary",
+  solid: "bg-fg-primary text-canvas",
 };
 
-export function Badge({ tone = "neutral", className, ...props }: ComponentProps<"span"> & { tone?: BadgeTone }) {
+export function Badge({
+  tone = "neutral",
+  dot = false,
+  className,
+  children,
+  ...props
+}: ComponentProps<"span"> & { tone?: BadgeTone; dot?: boolean }) {
   return (
     <span
       className={cn(
@@ -20,6 +28,9 @@ export function Badge({ tone = "neutral", className, ...props }: ComponentProps<
         className,
       )}
       {...props}
-    />
+    >
+      {dot && <span aria-hidden className="size-1.5 rounded-full bg-current" />}
+      {children}
+    </span>
   );
 }

@@ -2,43 +2,41 @@
 
 import { cn } from "@/lib/utils";
 
+export type SegmentOption<T extends string> = T | { value: T; label: string; disabled?: boolean; hint?: string };
+
 type SegmentedControlProps<T extends string> = {
-  options: readonly T[];
+  options: readonly SegmentOption<T>[];
   value: T;
   onChange: (value: T) => void;
   label: string;
+  size?: "sm" | "md";
   className?: string;
 };
 
-export function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-  label,
-  className,
-}: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ options, value, onChange, label, size = "sm", className }: SegmentedControlProps<T>) {
   return (
-    <div
-      role="group"
-      aria-label={label}
-      className={cn("inline-flex items-center rounded-md border border-line bg-canvas p-0.5", className)}
-    >
+    <div role="radiogroup" aria-label={label} className={cn("inline-flex items-center rounded-md border border-border bg-canvas p-0.5", className)}>
       {options.map((option) => {
-        const selected = option === value;
+        const item = typeof option === "string" ? { value: option, label: option, disabled: false, hint: undefined } : option;
+        const selected = item.value === value;
         return (
           <button
-            key={option}
+            key={item.value}
             type="button"
-            aria-pressed={selected}
-            onClick={() => onChange(option)}
+            role="radio"
+            aria-checked={selected}
+            disabled={item.disabled}
+            title={item.hint}
+            onClick={() => onChange(item.value)}
             className={cn(
-              "h-6 min-w-8 rounded px-2 text-[11px] font-medium tabular-nums transition-colors duration-150",
+              "rounded font-medium tabular-nums whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40",
+              size === "sm" ? "h-6 min-w-8 px-2 text-[11px]" : "h-7 min-w-10 px-3 text-xs",
               selected
-                ? "bg-surface-hover text-fg shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
-                : "text-fg-subtle hover:text-fg",
+                ? "bg-surface-hover text-fg-primary shadow-[inset_0_0_0_1px_var(--color-border-strong)]"
+                : "text-fg-muted hover:text-fg-primary",
             )}
           >
-            {option}
+            {item.label}
           </button>
         );
       })}

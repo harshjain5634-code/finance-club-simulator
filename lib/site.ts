@@ -1,5 +1,6 @@
 export const siteConfig = {
   name: "Finance Club",
-  product: "Trading Simulator",
-  description: "Paper-trade Indian equities, track your portfolio and compete with your finance club.",
+  product: "Stock Market Simulation Platform",
+  shortProduct: "Market Simulation",
+  description: "Run live stock-market simulation events: a host control room, team trading terminals and a projector display.",
 };
