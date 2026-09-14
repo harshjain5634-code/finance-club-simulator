@@ -1,31 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, LockOpen, Newspaper, Pencil, Plus, Snowflake, Trash, TrendingUp } from "lucide-react";
+import { Lock, LockOpen, Plus, Snowflake, Trash, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Delta } from "@/components/ui/delta";
-import { Dialog, DrawerContent } from "@/components/ui/dialog";
+import { DrawerContent } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { MoneyInput } from "@/components/ui/money-input";
-import { EmptyState, InlineBanner, PageHeader } from "@/components/ui/misc";
+import { InlineBanner, PageHeader } from "@/components/ui/misc";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/controls";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InstrumentStateBadge, NewsStatusBadge, PriceSourceBadge } from "@/components/market/status";
+import { InstrumentStateBadge, PriceSourceBadge } from "@/components/market/status";
 import { LeaderboardTable } from "@/components/market/tables";
-import { BeforeAfter, ImpactLabel, NewsReleaseItem } from "@/components/market/widgets";
+import { BeforeAfter, ImpactLabel } from "@/components/market/widgets";
 import { computeLeaderboard } from "@/lib/domain/leaderboard";
 import { changePct, formatPct, formatPrice, round2 } from "@/lib/domain/money";
 import { configuredImpactOf, describeConfigured, validateNewsItem } from "@/lib/domain/news";
 import { applyPercent, applyPriceRules, CLAMP_LABEL, limitsFor } from "@/lib/domain/prices";
 import type { NewsDraft } from "@/lib/domain/setup";
 import type { EventState, Instrument, NewsImpact, NewsItem, ParticipantLeaderboardVisibility, ProjectorLeaderboardVisibility } from "@/lib/domain/types";
-import { formatClock, formatDateTime } from "@/lib/format";
+import { formatClock } from "@/lib/format";
 import {
   freezeLeaderboard,
   haltInstrument,
@@ -34,190 +33,18 @@ import {
   saveNews,
   setInstrumentPrice,
   setLeaderboardVisibility,
-  skipNews,
   unfreezeLeaderboard,
 } from "@/lib/mock/commands";
 import { useNow } from "@/lib/mock/hooks";
-import { describeActor, instrumentOf, instrumentRows, releasesNewestFirst } from "@/lib/mock/selectors";
+import { describeActor, instrumentOf, instrumentRows } from "@/lib/mock/selectors";
 import { cn } from "@/lib/utils";
 import { hostAction, useHostEvent } from "./host-context";
-import { ReleaseNewsDialog } from "./news-release-dialog";
 
-/* ───────────────────────── News desk ───────────────────────── */
-
-export function NewsDeskScreen() {
-  const { state, eventId } = useHostEvent();
-  const now = useNow();
-  const [editing, setEditing] = useState<NewsItem | "new" | null>(null);
-  const [releaseItem, setReleaseItem] = useState<NewsItem | null>(null);
-  const [skipItem, setSkipItem] = useState<NewsItem | null>(null);
-  const [roundFilter, setRoundFilter] = useState("ALL");
-  const live = state.event.status === "LIVE" || state.event.status === "PAUSED";
-  const roundName = (roundId: string | null) => {
-    const round = state.rounds.find((r) => r.id === roundId);
-    return round ? `R${round.number} · ${round.name}` : "Any round";
-  };
-  const items = [...state.news].filter((n) => roundFilter === "ALL" || n.roundId === roundFilter).sort((a, b) => a.number - b.number);
-  const releases = releasesNewestFirst(state);
-
-  return (
-    <div className="flex flex-col gap-3">
-      <PageHeader
-        title="News desk"
-        description="Prepare stories, attach price impacts and release them to every screen. Range impacts resolve once at release."
-        actions={
-          <Button variant="primary" onClick={() => setEditing("new")}>
-            <Plus className="size-3.5" /> New story
-          </Button>
-        }
-      />
-      {!live && <InlineBanner tone="neutral" title="Release is available once the event is live.">You can prepare and edit stories now.</InlineBanner>}
-      <Card>
-        <Tabs defaultValue="library">
-          <TabsList>
-            <TabsTrigger value="library" count={state.news.length}>Library</TabsTrigger>
-            <TabsTrigger value="history" count={releases.length}>Released history</TabsTrigger>
-          </TabsList>
-          <TabsContent value="library">
-            <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
-              <Select size="sm" className="w-52" aria-label="Filter by round" value={roundFilter} onValueChange={setRoundFilter} options={[{ value: "ALL", label: "All rounds" }, ...state.rounds.map((r) => ({ value: r.id, label: `R${r.number} · ${r.name}` }))]} />
-              <span className="ml-auto text-xs text-fg-muted">
-                {state.news.filter((n) => n.status === "READY").length} ready · {state.news.filter((n) => n.status === "RELEASED").length} released
-              </span>
-            </div>
-            <DataTable
-              rows={items}
-              rowKey={(n) => n.id}
-              minWidth={900}
-              empty="No stories yet."
-              columns={[
-                { key: "no", header: "#", sortValue: (n) => n.number, cell: (n) => <span className="font-mono text-xs text-fg-muted">{n.number}</span> },
-                {
-                  key: "headline",
-                  header: "Headline",
-                  sortValue: (n) => n.headline,
-                  cell: (n) => (
-                    <span className="block max-w-80 leading-tight whitespace-normal">
-                      <span className="block truncate font-medium text-fg-primary" title={n.headline}>{n.headline}</span>
-                      <span className="block text-[11px] text-fg-muted">{n.priority === "HIGH" ? "High priority" : n.priority === "LOW" ? "Low priority" : "Normal priority"}</span>
-                    </span>
-                  ),
-                },
-                { key: "round", header: "Round", sortValue: (n) => n.roundId ?? "", cell: (n) => <span className="text-fg-secondary">{roundName(n.roundId)}</span> },
-                {
-                  key: "impact",
-                  header: "Affected stocks · impact",
-                  cell: (n) => {
-                    const released = state.newsReleases.find((r) => r.id === n.releaseId);
-                    if (n.impacts.length === 0) return <span className="text-fg-muted">Informational</span>;
-                    return (
-                      <span className="flex flex-col gap-0.5">
-                        {released
-                          ? released.impacts.map((i) => (
-                              <span key={i.instrumentId} className="flex items-center gap-1.5 text-xs">
-                                <span className="w-16 font-medium text-fg-primary">{instrumentOf(state, i.instrumentId)?.symbol}</span>
-                                <Delta value={i.appliedPct} className="text-xs" />
-                              </span>
-                            ))
-                          : n.impacts.map((i) => (
-                              <span key={i.id} className="flex items-center gap-1.5 text-xs">
-                                <span className="w-16 font-medium text-fg-primary">{instrumentOf(state, i.instrumentId)?.symbol}</span>
-                                <ImpactLabel configured={configuredImpactOf(i)} />
-                              </span>
-                            ))}
-                      </span>
-                    );
-                  },
-                },
-                { key: "status", header: "Status", sortValue: (n) => n.status, cell: (n) => <NewsStatusBadge status={n.status} /> },
-                {
-                  key: "actions",
-                  header: "",
-                  align: "right",
-                  cell: (n) => (
-                    <span className="inline-flex items-center gap-1">
-                      {n.status !== "RELEASED" && (
-                        <Button variant="ghost" size="icon-sm" onClick={() => setEditing(n)} aria-label={`Edit story ${n.number}`} title="Edit">
-                          <Pencil className="size-3.5" />
-                        </Button>
-                      )}
-                      {(n.status === "READY" || n.status === "DRAFT") && (
-                        <Button variant="ghost" size="sm" onClick={() => setSkipItem(n)}>
-                          Skip
-                        </Button>
-                      )}
-                      {n.status === "READY" && (
-                        <Button variant="secondary" size="sm" onClick={() => setReleaseItem(n)} disabled={!live}>
-                          Release…
-                        </Button>
-                      )}
-                    </span>
-                  ),
-                },
-              ]}
-            />
-          </TabsContent>
-          <TabsContent value="history">
-            {releases.length === 0 ? (
-              <EmptyState icon={<Newspaper className="size-4" />} title="Nothing released yet" />
-            ) : (
-              <div className="divide-y divide-border">
-                {releases.map((release) => (
-                  <div key={release.id}>
-                    <NewsReleaseItem state={state} release={release} now={now} showImpactDetail />
-                    <div className="-mt-1 px-4 pb-3">
-                      <table className="w-full max-w-3xl text-xs">
-                        <thead>
-                          <tr className="text-[10px] tracking-wide text-fg-muted uppercase">
-                            <th className="py-1 text-left font-medium">Stock</th>
-                            <th className="py-1 text-left font-medium">Configured</th>
-                            <th className="py-1 text-right font-medium">Resolved</th>
-                            <th className="py-1 text-right font-medium">Applied</th>
-                            <th className="py-1 text-right font-medium">Price</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {release.impacts.map((i) => (
-                            <tr key={i.instrumentId} className="border-t border-border/60">
-                              <td className="py-1 font-medium text-fg-primary">{instrumentOf(state, i.instrumentId)?.symbol}</td>
-                              <td className="py-1"><ImpactLabel configured={i.configured} /></td>
-                              <td className="py-1 text-right font-mono tabular-nums">{formatPct(i.resolvedPct)}</td>
-                              <td className="py-1 text-right"><Delta value={i.appliedPct} className="text-xs" />{i.clamped && <Badge tone="warning" className="ml-1.5">{i.clampReasons.map((r) => CLAMP_LABEL[r]).join(", ")}</Badge>}</td>
-                              <td className="py-1 text-right"><BeforeAfter before={i.previousPrice} after={i.newPrice} className="justify-end text-xs" /></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <p className="mt-1 text-[11px] text-fg-muted">Released {formatDateTime(release.releasedAt)} by {describeActor(state, release.releasedBy)} · {release.id}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </Card>
-
-      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
-        {editing !== null && <NewsEditor key={editing === "new" ? "new" : editing.id} state={state} item={editing === "new" ? null : editing} onDone={() => setEditing(null)} />}
-      </Dialog>
-      <ReleaseNewsDialog state={state} item={releaseItem} onClose={() => setReleaseItem(null)} />
-      <ConfirmActionDialog
-        open={skipItem !== null}
-        onOpenChange={(open) => !open && setSkipItem(null)}
-        tier="confirm"
-        title={`Skip story #${skipItem?.number}?`}
-        description="Skipped stories stay in the library for the record but can no longer be released."
-        confirmLabel="Skip story"
-        onConfirm={() => hostAction(skipNews(eventId, skipItem!.id), `Story #${skipItem!.number} skipped`)}
-      />
-    </div>
-  );
-}
+/* ───────────────────────── News editor ───────────────────────── */
 
 type ImpactDraft = Omit<NewsImpact, "id"> & { key: string };
 
-function NewsEditor({ state, item, onDone }: { state: EventState; item: NewsItem | null; onDone: () => void }) {
+export function NewsEditor({ state, item, onDone }: { state: EventState; item: NewsItem | null; onDone: () => void }) {
   const [headline, setHeadline] = useState(item?.headline ?? "");
   const [body, setBody] = useState(item?.body ?? "");
   const [roundId, setRoundId] = useState(item?.roundId ?? "ANY");
@@ -439,7 +266,7 @@ export function PricesScreen() {
   );
 }
 
-function ManualPriceDialog({ state, instrument, mode, onClose }: { state: EventState; instrument: Instrument; mode: "SET" | "PERCENT"; onClose: () => void }) {
+export function ManualPriceDialog({ state, instrument, mode, onClose }: { state: EventState; instrument: Instrument; mode: "SET" | "PERCENT"; onClose: () => void }) {
   const current = state.prices[instrument.id].price;
   const [target, setTarget] = useState<number | null>(current);
   const [pctText, setPctText] = useState("");

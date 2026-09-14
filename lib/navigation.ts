@@ -61,9 +61,14 @@ export function hostNav(eventId: string): NavGroup[] {
       label: "Live",
       items: [
         { label: "Control Room", href: base, icon: Gauge, exact: true },
+        { label: "Trades", href: `${base}/trades`, icon: ArrowLeftRight, badgeKey: "approvals" },
+        { label: "News", href: `${base}/news`, icon: Newspaper },
         { label: "Teams", href: `${base}/teams`, icon: Users },
-        { label: "Trade Monitor", href: `${base}/trades`, icon: ArrowLeftRight, badgeKey: "approvals" },
-        { label: "News Desk", href: `${base}/news`, icon: Newspaper },
+      ],
+    },
+    {
+      label: "Market",
+      items: [
         { label: "Prices", href: `${base}/prices`, icon: TrendingUp },
         { label: "Leaderboard", href: `${base}/leaderboard`, icon: Medal },
       ],
@@ -71,7 +76,7 @@ export function hostNav(eventId: string): NavGroup[] {
     {
       label: "Setup",
       items: [
-        { label: "General", href: `${base}/setup/general`, icon: Settings2 },
+        { label: "Event Settings", href: `${base}/setup/general`, icon: Settings2 },
         { label: "Instruments", href: `${base}/setup/instruments`, icon: ChartCandlestick },
         { label: "Allocations", href: `${base}/setup/allocations`, icon: ChartPie },
         { label: "Rounds", href: `${base}/setup/rounds`, icon: Timer },
@@ -81,7 +86,7 @@ export function hostNav(eventId: string): NavGroup[] {
     {
       label: "Records",
       items: [
-        { label: "Audit Log", href: `${base}/audit`, icon: ClipboardList },
+        { label: "Audit", href: `${base}/audit`, icon: ClipboardList },
         { label: "Exports", href: `${base}/exports`, icon: Download },
       ],
     },

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { NewsDeskScreen } from "@/components/host/market-screens";
+import { NewsDeskScreen } from "@/components/host/news-desk-screen";
 
 export const metadata: Metadata = { title: "News desk" };
 
