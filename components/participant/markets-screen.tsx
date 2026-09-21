@@ -81,7 +81,7 @@ export function MarketsScreen() {
           rowLabel={(r) => `Open ${r.instrument.name}`}
           initialSort={{ key: "company", direction: "asc" }}
           minWidth={980}
-          minWidthSm={560}
+          minWidthSm={340}
           empty={view === "WATCHLIST" ? "Star stocks to add them to your watchlist." : "No stocks match these filters."}
           columns={[
             {
@@ -105,6 +105,7 @@ export function MarketsScreen() {
                 );
               },
               className: "w-10 pr-0",
+              hideBelowSm: true,
             },
             {
               key: "company",
@@ -114,16 +115,34 @@ export function MarketsScreen() {
                 <span className="flex items-center gap-2.5">
                   <SymbolMark symbol={r.instrument.symbol} />
                   <span className="max-w-56 truncate font-medium text-fg-primary">{r.instrument.name}</span>
+                  {/* The status column is hidden on phones, so halted has to show here. */}
+                  {r.instrument.halted && (
+                    <Badge tone="warning" className="sm:hidden">
+                      Halted
+                    </Badge>
+                  )}
                 </span>
               ),
             },
             { key: "symbol", header: "Symbol", hideBelowSm: true, sortValue: (r) => r.instrument.symbol, cell: (r) => <span className="font-mono text-xs text-fg-secondary">{r.instrument.symbol}</span> },
             { key: "sector", header: "Sector", hideBelowSm: true, sortValue: (r) => r.instrument.sector, cell: (r) => <span className="text-fg-secondary">{r.instrument.sector}</span> },
             { key: "price", header: "Price", align: "right", sortValue: (r) => r.price, cell: (r) => <span className="font-medium text-fg-primary">{formatPrice(r.price)}</span> },
-            { key: "round", header: "Round change", align: "right", sortValue: (r) => r.roundChangePct, cell: (r) => <Delta value={r.roundChangePct} variant="pill" /> },
-            { key: "event", header: "Event change", align: "right", sortValue: (r) => r.eventChangePct, cell: (r) => <Delta value={r.eventChangePct} /> },
+            {
+              key: "round",
+              // The uppercase header, not the pill, sets this column's width; shorten it on phones.
+              header: (
+                <>
+                  <span className="sm:hidden">Change</span>
+                  <span className="hidden sm:inline">Round change</span>
+                </>
+              ),
+              align: "right",
+              sortValue: (r) => r.roundChangePct,
+              cell: (r) => <Delta value={r.roundChangePct} variant="pill" />,
+            },
+            { key: "event", header: "Event change", align: "right", hideBelowSm: true, sortValue: (r) => r.eventChangePct, cell: (r) => <Delta value={r.eventChangePct} /> },
             { key: "spark", header: "30D trend", align: "right", hideBelowSm: true, cell: (r) => <Sparkline data={r.sparkline} baseline={r.snapshot.eventOpenPrice} className="ml-auto h-7 w-24" /> },
-            { key: "status", header: "Status", sortValue: (r) => Number(r.instrument.halted), cell: (r) => <InstrumentStateBadge halted={r.instrument.halted} enabled={r.instrument.enabled} /> },
+            { key: "status", header: "Status", hideBelowSm: true, sortValue: (r) => Number(r.instrument.halted), cell: (r) => <InstrumentStateBadge halted={r.instrument.halted} enabled={r.instrument.enabled} /> },
           ]}
         />
       </Card>
