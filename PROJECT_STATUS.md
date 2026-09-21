@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-09-14 · branch `phase1-ux-refinement` (on top of `phase1-full-prototype`) · Phase 1 complete + UX refinement pass_
+_Last updated: 2026-09-21 · branch `phase1-ux-refinement` (on top of `phase1-full-prototype`) · Phase 1 complete + UX refinement + browser audit pass_
 
 Finance Club Stock Market Simulation Platform. **Phase 1 = frontend prototype + mock domain logic only.** It has no database, auth, backend APIs, WebSockets or market data.
 
@@ -121,10 +121,20 @@ UX refinement (branch `phase1-ux-refinement`, based on `4bc15f5`):
 - [x] `ux: improve projector scenes and controls`
 - [x] `ux: add participant onboarding and final polish`
 
+Browser audit pass (2026-09-21):
+
+- [x] `fix: accessibility, responsive and chart defects found by browser audit`
+- [x] `a11y: meet WCAG AA contrast in the light theme, tighten mobile holdings`
+
 ## Verification
 
 - `npm run test`: 54 tests pass (49 domain, including 11 random-news and 9 projector tests; 5 workflow)
 - `npm run lint`, `npm run typecheck`, `npm run build`: clean
+- **Route audit** (headless Chrome, dev + production, 37 routes × 1440/1280/768/390): no horizontal
+  overflow, no console errors or warnings, exactly one `<h1>` per route, no sub-11px content text.
+- **Contrast audit** (every text node, 28 routes × dark and light): all pass WCAG AA.
+- **Keyboard audit**: skip link first, off-canvas sidebar correctly out of the tab order, no dead
+  tab stops, visible focus on every control.
 - `scripts/browser-smoke.mjs` (production build, headless Chrome, 4 tabs): 86/86 checks, 0 console errors. The run covers onboarding, a news-desk release, projector Next/Pin/Resume/message, random mode (release now plus an automatic release after the 30-second gap) and scene-fit checks.
 - Per-workflow results: `PHASE1_TEST_CHECKLIST.md`
 
@@ -161,7 +171,8 @@ UX refinement (branch `phase1-ux-refinement`, based on `4bc15f5`):
 
 - **Browser scope:** cross-window sync and presence only work within one browser profile. The scheduler only runs while at least one tab is open.
 - **No real security:** PINs are plaintext, the host console has no login, and the projector link isn't enforced without `?key=`.
-- **Light theme:** a scaffold only. A forced-light terminal can briefly show dark before the policy applies.
+- **Light theme:** usable and WCAG AA clean, but tuned less deliberately than dark (the production
+  theme). A forced-light terminal can briefly show dark before the policy applies.
 - **Not click-tested in a browser** (logic is covered by tests): adjustment dialogs, manual price dialogs, approval queue, instrument/rounds/general editors, projector scene drag-reorder and duration edits, random-news skip/pause/pool switches, news editor, audit filter controls, CSV file download, watchlist, theme toggle.
 - **UX limitations of this pass:**
   - The breaking-news toast covers the top-right of team screens for up to 15 s (dismissible).
@@ -173,7 +184,7 @@ UX refinement (branch `phase1-ux-refinement`, based on `4bc15f5`):
 - **Rank movement:** teams tie at round start and ties rank alphabetically, so the first price move can show large movements.
 - **Wizard-created teams:** generic names (Team 01…) and sequential PINs. Rename and regenerate them in Teams.
 - **Storage limits:** the audit log is uncapped in localStorage; very long sessions could approach the ~5 MB quota. Valuations are capped at 720 snapshots.
-- **Housekeeping:** no delete-event UI; `README.md` is still the create-next-app default.
+- **Housekeeping:** no delete-event UI.
 
 ## What Phase 2 replaces
 

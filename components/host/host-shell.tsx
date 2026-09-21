@@ -60,7 +60,6 @@ export function HostEventShell({ children }: { children: ReactNode }) {
     <HostEventContext.Provider value={eventId}>
       <AppFrame
         label="Host console navigation"
-        variant="console"
         nav={hostNav(eventId)}
         badges={{ approvals: pendingApprovals }}
         sidebarHeader={<Brand href="/host" subtitle="Host console" />}

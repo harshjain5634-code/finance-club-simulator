@@ -17,11 +17,10 @@ type AppFrameProps = {
   topBar: (controls: { openNav: () => void; navOpen: boolean }) => ReactNode;
   banner?: ReactNode;
   children: ReactNode;
-  variant?: "terminal" | "console";
 };
 
 /** Shared shell: fixed sidebar on desktop, slide-out drawer below 1024px, sticky top bar. */
-export function AppFrame({ label, nav, badges = {}, sidebarHeader, sidebarFooter, topBar, banner, children, variant = "terminal" }: AppFrameProps) {
+export function AppFrame({ label, nav, badges = {}, sidebarHeader, sidebarFooter, topBar, banner, children }: AppFrameProps) {
   const [navOpen, setNavOpen] = useState(false);
   const pathname = usePathname();
 
@@ -59,8 +58,7 @@ export function AppFrame({ label, nav, badges = {}, sidebarHeader, sidebarFooter
         id="app-sidebar"
         aria-label={label}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border transition-[translate,visibility] duration-200 ease-out lg:visible lg:w-60 lg:translate-x-0",
-          variant === "console" ? "bg-surface" : "bg-surface",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-surface transition-[translate,visibility] duration-200 ease-out lg:visible lg:w-60 lg:translate-x-0",
           navOpen ? "visible translate-x-0" : "invisible -translate-x-full",
         )}
       >

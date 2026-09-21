@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Finance Club — Stock Market Simulation Platform
 
-## Getting Started
+Run a live stock-market simulation event for a finance club: teams trade with virtual
+capital from their own terminals, a host drives the market from a control room, and a
+projector screen broadcasts the action to the room.
 
-First, run the development server:
+> **Phase 1 prototype.** Everything runs in the browser against a mock backend
+> (`localStorage` + `BroadcastChannel`). There is no database, authentication, real money
+> or live market data. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the full picture.
+
+## Run it locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open **<http://localhost:3000/demo>** — the demo launcher opens the host console,
+two team terminals and the projector in separate tabs.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> All tabs must be in the **same browser profile**: they share `localStorage` and a
+> `BroadcastChannel` to stay in sync.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Demo event code `FINSIM26`. Teams sign in at `/join/FINSIM26` — Alpha Capital
+`ALPHA`/`4821`, Beta Street `BETA`/`7390`. The full list is on `/demo`.
 
-## Learn More
+## The three surfaces
 
-To learn more about Next.js, take a look at the following resources:
+| Surface | Route | What it is |
+|---|---|---|
+| **Team terminal** | `/event/FINSIM26/dashboard` | Portfolio, live P&L, rank, markets, order ticket, news and leaderboard |
+| **Host control room** | `/host/events/demo-event` | Round and trading controls, news desk, price moves, teams, audit and CSV exports |
+| **Projector** | `/event/FINSIM26/projector` | Full-screen audience display with rotating scenes and breaking-news takeovers |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Add `?scene=leaderboard` (or `market`, `movers`, `news`, `breaking`, `round`, `standby`,
+`final`) to the projector URL to review a single scene on that screen only.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## How an event runs
 
-## Deploy on Vercel
+1. **Set up** the event in Host → Setup: teams, instruments, allocations and rounds.
+2. **Start the event**, then run a briefing round followed by trading rounds.
+3. **Release news** from the news desk — manually, or let random mode schedule stories.
+   Each story resolves its price impact once and stores the exact result.
+4. **Teams trade peer-to-peer**: one team proposes, the other accepts, and the trade
+   settles atomically through a double-entry ledger.
+5. **Rank** by return on capital base. Freeze the leaderboard for the reveal, then end
+   the event and export CSVs.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev         # dev server on :3000
+npm run build       # production build
+npm run start       # serve the production build
+npm run test        # Vitest — domain and workflow tests
+npm run lint        # ESLint
+npm run typecheck   # tsc --noEmit
+```
+
+### Cross-window smoke test
+
+Drives four real browser windows through a whole event over the DevTools Protocol:
+
+```bash
+npm run build && npx next start -p 3100
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --remote-debugging-port=9333 --user-data-dir=/tmp/finsim-smoke about:blank
+node scripts/browser-smoke.mjs smoke-output
+```
+
+## Architecture
+
+```
+app/          Thin App Router pages; layouts mount the shells
+components/
+  ui/         Primitives: button, badge, card, dialog, data-table, field, tabs, toaster…
+  shell/      AppFrame (sidebar + sticky top bar + mobile drawer)
+  market/     Shared domain UI: status badges, round clock, charts, tables, widgets
+  participant/ Team terminal shell and screens
+  host/       Host console shell, control room, news desk, setup and records screens
+  projector/  1920×1080 scaled stage, scenes and overlays
+lib/
+  domain/     Pure TypeScript domain logic, no React (money, ledger, prices, news…)
+  mock/       Phase 1 mock backend: store, commands, selectors, hooks, scheduler
+data/         Scenario configs, templates and pre-event price history
+```
+
+Money is stored as integer paise throughout and formatted as INR with Indian digit
+grouping. Prices move only through discrete, audited price events — never background
+volatility — so charts are step charts.
+
+`lib/domain` is deliberately free of React and storage concerns so it can be reused
+server-side later; `lib/mock/commands.ts` takes the inputs and returns the result shape
+that server actions will use.
+
+## Design system
+
+Semantic tokens only (`canvas`, `surface`, `border`, `fg-primary/secondary/muted`,
+`accent`, `positive`, `negative`, `warning`) defined in `app/globals.css`. Dark is the
+production theme; `[data-theme="light"]` overrides the same names.
+
+Green and red are reserved for gains and losses and are always paired with a `+`/`−`
+sign, never colour alone. Every route has been checked for WCAG AA contrast in both
+themes, at 1440 / 1280 / 768 / 390 px.
