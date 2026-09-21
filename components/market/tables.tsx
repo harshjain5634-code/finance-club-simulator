@@ -53,7 +53,11 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
             <SymbolMark symbol={instrument.symbol} />
             <span className="min-w-0">
               <span className="block max-w-48 truncate font-medium text-fg-primary">{instrument.name}</span>
-              <span className="block text-[11px] text-fg-muted">{instrument.sector}</span>
+              {/* Phones drop the qty/price columns, so carry those numbers here instead of the sector. */}
+              <span className="block text-[11px] text-fg-muted tabular-nums sm:hidden">
+                {formatQuantity(h.quantity)} × {formatPrice(h.price)}
+              </span>
+              <span className="hidden text-[11px] text-fg-muted sm:block">{instrument.sector}</span>
             </span>
           </span>
         );
@@ -67,9 +71,9 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
       },
     },
     { key: "symbol", header: "Symbol", hideBelowSm: true, sortValue: (h) => symbolOf(state)(h.instrumentId), cell: (h) => <span className="font-mono text-xs text-fg-secondary">{symbolOf(state)(h.instrumentId)}</span> },
-    { key: "qty", header: "Qty", align: "right", sortValue: (h) => h.quantity, cell: (h) => formatQuantity(h.quantity) },
+    { key: "qty", header: "Qty", align: "right", hideBelowSm: true, sortValue: (h) => h.quantity, cell: (h) => formatQuantity(h.quantity) },
     { key: "avg", header: "Avg cost", align: "right", hideBelowSm: true, sortValue: (h) => h.averageCost, cell: (h) => <span className="text-fg-secondary">{formatPrice(Math.round(h.averageCost))}</span> },
-    { key: "price", header: "Price", align: "right", sortValue: (h) => h.price, cell: (h) => formatPrice(h.price) },
+    { key: "price", header: "Price", align: "right", hideBelowSm: true, sortValue: (h) => h.price, cell: (h) => formatPrice(h.price) },
     { key: "value", header: "Value", align: "right", sortValue: (h) => h.value, cell: (h) => <span className="font-medium text-fg-primary">{formatINR(h.value)}</span> },
     { key: "pnl", header: "Unrealized P&L", align: "right", sortValue: (h) => h.unrealizedPnl, cell: (h) => <Delta value={h.unrealizedPnl} format="inr" /> },
     { key: "ret", header: "Return", align: "right", sortValue: (h) => h.returnPct, cell: (h) => <Delta value={h.returnPct} variant="pill" /> },
@@ -100,7 +104,7 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
       rowKey={(h) => h.instrumentId}
       initialSort={{ key: "value", direction: "desc" }}
       minWidth={showAllocation ? 1000 : 900}
-      minWidthSm={620}
+      minWidthSm={460}
       empty={empty}
       footer={
         holdings.length > 0 ? (
@@ -108,9 +112,9 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
             <tr className="border-t border-border-strong bg-surface-raised">
               <td className="sticky left-0 z-10 bg-surface-raised px-4 py-2.5 text-xs font-medium text-fg-secondary">Total</td>
               <td className="hidden sm:table-cell" />
-              <td />
               <td className="hidden sm:table-cell" />
-              <td />
+              <td className="hidden sm:table-cell" />
+              <td className="hidden sm:table-cell" />
               <td className="px-4 text-right font-semibold text-fg-primary tabular-nums">{formatINR(totals.value)}</td>
               <td className="px-4 text-right tabular-nums">
                 <Delta value={totals.value - totals.basis} format="inr" />
