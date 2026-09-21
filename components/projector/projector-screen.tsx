@@ -70,6 +70,8 @@ export function ProjectorScreen() {
 
   return (
     <IdleCursor>
+      {/* The stage is display typography; this is the page's one real heading. */}
+      <h1 className="sr-only">{state.event.name} — audience display</h1>
       <StageScaler className="h-dvh w-screen">
         <ProjectorStage state={state} joinUrl={`${origin || "your-site"}/join`} override={override} />
       </StageScaler>

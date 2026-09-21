@@ -167,7 +167,7 @@ function Takeover({ state, takeover }: { state: EventState; takeover: ActiveTake
       <div className="grid min-h-0 flex-1 grid-cols-[1.3fr_1fr] items-center gap-14 px-14 py-12">
         <div className="flex min-h-0 flex-col">
           <p className="text-[20px] font-semibold tracking-[0.16em] text-warning uppercase">{releaseRound ? `${roundLabel(state, releaseRound)} · ${releaseRound.name}` : state.event.name}</p>
-          <h1 className="mt-4 line-clamp-4 text-[72px] leading-[1.05] font-semibold tracking-tight text-fg-primary">{release.headline}</h1>
+          <p className="mt-4 line-clamp-4 text-[72px] leading-[1.05] font-semibold tracking-tight text-fg-primary">{release.headline}</p>
           {release.body && <p className="mt-7 line-clamp-4 border-l-4 border-warning/60 pl-6 text-[30px] leading-snug text-fg-secondary">{release.body}</p>}
         </div>
         <div className="flex min-h-0 flex-col">

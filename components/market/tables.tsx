@@ -66,9 +66,9 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
         );
       },
     },
-    { key: "symbol", header: "Symbol", sortValue: (h) => symbolOf(state)(h.instrumentId), cell: (h) => <span className="font-mono text-xs text-fg-secondary">{symbolOf(state)(h.instrumentId)}</span> },
+    { key: "symbol", header: "Symbol", hideBelowSm: true, sortValue: (h) => symbolOf(state)(h.instrumentId), cell: (h) => <span className="font-mono text-xs text-fg-secondary">{symbolOf(state)(h.instrumentId)}</span> },
     { key: "qty", header: "Qty", align: "right", sortValue: (h) => h.quantity, cell: (h) => formatQuantity(h.quantity) },
-    { key: "avg", header: "Avg cost", align: "right", sortValue: (h) => h.averageCost, cell: (h) => <span className="text-fg-secondary">{formatPrice(Math.round(h.averageCost))}</span> },
+    { key: "avg", header: "Avg cost", align: "right", hideBelowSm: true, sortValue: (h) => h.averageCost, cell: (h) => <span className="text-fg-secondary">{formatPrice(Math.round(h.averageCost))}</span> },
     { key: "price", header: "Price", align: "right", sortValue: (h) => h.price, cell: (h) => formatPrice(h.price) },
     { key: "value", header: "Value", align: "right", sortValue: (h) => h.value, cell: (h) => <span className="font-medium text-fg-primary">{formatINR(h.value)}</span> },
     { key: "pnl", header: "Unrealized P&L", align: "right", sortValue: (h) => h.unrealizedPnl, cell: (h) => <Delta value={h.unrealizedPnl} format="inr" /> },
@@ -79,6 +79,7 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
             key: "alloc",
             header: "Allocation",
             align: "right" as const,
+            hideBelowSm: true,
             sortValue: (h: HoldingView) => h.allocationPct,
             cell: (h: HoldingView) => (
               <span className="inline-flex items-center gap-2">
@@ -99,13 +100,17 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
       rowKey={(h) => h.instrumentId}
       initialSort={{ key: "value", direction: "desc" }}
       minWidth={showAllocation ? 1000 : 900}
+      minWidthSm={620}
       empty={empty}
       footer={
         holdings.length > 0 ? (
           <tfoot>
             <tr className="border-t border-border-strong bg-surface-raised">
               <td className="sticky left-0 z-10 bg-surface-raised px-4 py-2.5 text-xs font-medium text-fg-secondary">Total</td>
-              <td colSpan={4} />
+              <td className="hidden sm:table-cell" />
+              <td />
+              <td className="hidden sm:table-cell" />
+              <td />
               <td className="px-4 text-right font-semibold text-fg-primary tabular-nums">{formatINR(totals.value)}</td>
               <td className="px-4 text-right tabular-nums">
                 <Delta value={totals.value - totals.basis} format="inr" />
@@ -113,7 +118,7 @@ export function HoldingsTable({ state, holdings, stockHref, showAllocation = tru
               <td className="px-4 text-right">
                 <Delta value={totals.basis ? ((totals.value - totals.basis) / totals.basis) * 100 : 0} variant="pill" />
               </td>
-              {showAllocation && <td />}
+              {showAllocation && <td className="hidden sm:table-cell" />}
             </tr>
           </tfoot>
         ) : undefined
@@ -287,8 +292,16 @@ export function AdjustmentsTable({ state, teamId }: { state: EventState; teamId:
 
 /* ───────── Leaderboard ───────── */
 
-export function RankMovement({ movement, className }: { movement: number; className?: string }) {
-  if (movement === 0) return <span className={cn("text-fg-muted tabular-nums", className)}>—</span>;
+/** `hideFlat` drops the "no change" dash where the component sits inside a sentence rather than a table column. */
+export function RankMovement({ movement, hideFlat = false, className }: { movement: number; hideFlat?: boolean; className?: string }) {
+  if (movement === 0) {
+    if (hideFlat) return null;
+    return (
+      <span className={cn("text-fg-muted tabular-nums", className)} aria-label="No rank change">
+        —
+      </span>
+    );
+  }
   const up = movement > 0;
   return (
     <span className={cn("inline-flex items-center gap-0.5 tabular-nums", up ? "text-positive" : "text-negative", className)} aria-label={`${up ? "Up" : "Down"} ${Math.abs(movement)}`}>

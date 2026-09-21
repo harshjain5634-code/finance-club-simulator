@@ -289,7 +289,7 @@ function SceneList({ state, eventId }: { state: EventState; eventId: string }) {
                 <GripVertical className="size-4" />
               </button>
               {automatic ? (
-                <span className="w-9 text-center text-[10px] font-semibold tracking-wide text-fg-muted uppercase">Auto</span>
+                <span className="w-9 text-center text-[11px] font-semibold tracking-wide text-fg-muted uppercase">Auto</span>
               ) : (
                 <Switch checked={setting.enabled} onCheckedChange={(enabled) => patch(setting.scene, { enabled }, `${SCENE_LABEL[setting.scene]} ${enabled ? "added to" : "removed from"} rotation`)} label={`Show ${SCENE_LABEL[setting.scene]} in rotation`} />
               )}

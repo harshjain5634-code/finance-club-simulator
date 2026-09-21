@@ -139,12 +139,13 @@ function TerminalFrame({ state, code, teamId, children }: { state: EventState; c
           <Button variant="ghost" size="icon" onClick={openNav} aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded={navOpen} className="-ml-1.5 lg:hidden">
             <Menu className="size-4" />
           </Button>
-          <h1 className="mr-auto truncate text-[15px] font-semibold tracking-tight text-fg-primary lg:mr-0 lg:w-28">{participantTitle(pathname, code)}</h1>
+          {/* Wayfinding label, not the page heading: each screen renders its own <h1> below. */}
+          <p className="mr-auto truncate text-[15px] font-semibold tracking-tight text-fg-primary lg:mr-0 lg:w-28">{participantTitle(pathname, code)}</p>
           <InstrumentSearch rows={rows} hrefFor={stockHref(code)} className="order-last w-full md:order-none md:w-52 xl:w-64" />
           <div className="flex items-center gap-2 md:ml-auto">
             <SessionChip state={state} className="hidden md:flex" />
             <div className="hidden h-8 flex-col justify-center border-l border-border pl-3 leading-tight xl:flex">
-              <span className="text-[10px] font-medium tracking-wide text-fg-muted uppercase">Cash</span>
+              <span className="text-[11px] font-medium tracking-wide text-fg-muted uppercase">Cash</span>
               <span className="text-[13px] font-medium text-fg-primary tabular-nums">{formatINR(teamCash(state, teamId))}</span>
             </div>
             <ThemeToggle policy={state.event.themePolicy} />

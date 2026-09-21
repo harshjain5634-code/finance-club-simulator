@@ -81,6 +81,7 @@ export function MarketsScreen() {
           rowLabel={(r) => `Open ${r.instrument.name}`}
           initialSort={{ key: "company", direction: "asc" }}
           minWidth={980}
+          minWidthSm={560}
           empty={view === "WATCHLIST" ? "Star stocks to add them to your watchlist." : "No stocks match these filters."}
           columns={[
             {
@@ -116,12 +117,12 @@ export function MarketsScreen() {
                 </span>
               ),
             },
-            { key: "symbol", header: "Symbol", sortValue: (r) => r.instrument.symbol, cell: (r) => <span className="font-mono text-xs text-fg-secondary">{r.instrument.symbol}</span> },
-            { key: "sector", header: "Sector", sortValue: (r) => r.instrument.sector, cell: (r) => <span className="text-fg-secondary">{r.instrument.sector}</span> },
+            { key: "symbol", header: "Symbol", hideBelowSm: true, sortValue: (r) => r.instrument.symbol, cell: (r) => <span className="font-mono text-xs text-fg-secondary">{r.instrument.symbol}</span> },
+            { key: "sector", header: "Sector", hideBelowSm: true, sortValue: (r) => r.instrument.sector, cell: (r) => <span className="text-fg-secondary">{r.instrument.sector}</span> },
             { key: "price", header: "Price", align: "right", sortValue: (r) => r.price, cell: (r) => <span className="font-medium text-fg-primary">{formatPrice(r.price)}</span> },
             { key: "round", header: "Round change", align: "right", sortValue: (r) => r.roundChangePct, cell: (r) => <Delta value={r.roundChangePct} variant="pill" /> },
             { key: "event", header: "Event change", align: "right", sortValue: (r) => r.eventChangePct, cell: (r) => <Delta value={r.eventChangePct} /> },
-            { key: "spark", header: "Trend", align: "right", cell: (r) => <Sparkline data={r.sparkline} baseline={r.snapshot.eventOpenPrice} className="ml-auto h-7 w-24" /> },
+            { key: "spark", header: "30D trend", align: "right", hideBelowSm: true, cell: (r) => <Sparkline data={r.sparkline} baseline={r.snapshot.eventOpenPrice} className="ml-auto h-7 w-24" /> },
             { key: "status", header: "Status", sortValue: (r) => Number(r.instrument.halted), cell: (r) => <InstrumentStateBadge halted={r.instrument.halted} enabled={r.instrument.enabled} /> },
           ]}
         />

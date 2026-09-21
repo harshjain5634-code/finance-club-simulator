@@ -126,7 +126,7 @@ export function Avatar({ name, size = "md", tone = "neutral", className }: { nam
 
 export function SearchInput({ value, onChange, placeholder, label, className }: { value: string; onChange: (value: string) => void; placeholder: string; label: string; className?: string }) {
   return (
-    <div className={cn("flex h-8 min-w-0 items-center gap-2 rounded-md border border-border bg-canvas px-2.5 transition-colors focus-within:border-accent/70 hover:border-border-strong", className)}>
+    <div className={cn("flex h-8 min-w-0 items-center gap-2 rounded-md border border-border bg-canvas px-2.5 transition-colors focus-within:border-accent/70 hover:border-border-strong has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2", className)}>
       <Search className="size-3.5 shrink-0 text-fg-muted" aria-hidden />
       <input
         type="search"

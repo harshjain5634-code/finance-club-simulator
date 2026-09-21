@@ -121,7 +121,11 @@ export function DashboardScreen() {
           label="Return"
           value={formatPct(summary.returnPct)}
           valueClassName={summary.returnPct > 0.00001 ? "text-positive" : summary.returnPct < -0.00001 ? "text-negative" : undefined}
-          sub={`On ${formatINR(summary.capitalBase, 0)} starting capital`}
+          sub={
+            <>
+              Total P&amp;L <Delta value={summary.netWorth - summary.capitalBase} format="inr" /> on {formatINR(summary.capitalBase, 0)}
+            </>
+          }
           className="border-b border-border lg:border-r lg:border-b-0"
         />
         <Metric label="Cash" value={formatINR(summary.cash)} sub="Available to buy" className="border-r border-border" />
@@ -134,7 +138,7 @@ export function DashboardScreen() {
               "Revealed later by the host"
             ) : ownRow ? (
               <span className="inline-flex items-center gap-1.5">
-                of {published.rows.length} teams <RankMovement movement={ownRow.movement} />
+                of {published.rows.length} teams <RankMovement movement={ownRow.movement} hideFlat />
                 {published.frozenAt && <span className="text-warning">· frozen</span>}
               </span>
             ) : (

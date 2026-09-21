@@ -181,7 +181,7 @@ function SelectionDrawer({ state, selection, now }: { state: EventState; selecti
             <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full min-w-[460px] text-xs">
                 <thead>
-                  <tr className="bg-surface-raised text-[10px] tracking-wide text-fg-muted uppercase">
+                  <tr className="bg-surface-raised text-[11px] tracking-wide text-fg-muted uppercase">
                     <th className="px-3 py-2 text-left font-medium">Account</th>
                     <th className="px-3 py-2 text-left font-medium">Asset</th>
                     <th className="px-3 py-2 text-right font-medium">Amount</th>

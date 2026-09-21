@@ -43,6 +43,13 @@ export function AppFrame({ label, nav, badges = {}, sidebarHeader, sidebarFooter
 
   return (
     <div className="min-h-dvh bg-canvas">
+      {/* Keyboard users land here first and can jump past the sidebar's nav list. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-md focus:bg-accent-strong focus:px-3 focus:py-2 focus:text-[13px] focus:font-medium focus:text-white"
+      >
+        Skip to main content
+      </a>
       <div
         aria-hidden
         onClick={close}
@@ -87,7 +94,7 @@ export function AppFrame({ label, nav, badges = {}, sidebarHeader, sidebarFooter
                         <Icon aria-hidden strokeWidth={1.75} className={cn("size-4 shrink-0", active ? "text-accent" : "text-fg-muted group-hover:text-fg-secondary")} />
                         <span className="flex-1 truncate">{item.label}</span>
                         {badge > 0 && (
-                          <span className="min-w-5 rounded bg-accent-strong px-1.5 py-0.5 text-center text-[10px] leading-none font-semibold text-white tabular-nums">
+                          <span className="min-w-5 rounded bg-accent-strong px-1.5 py-0.5 text-center text-[11px] leading-none font-semibold text-white tabular-nums">
                             {badge}
                           </span>
                         )}
@@ -105,7 +112,9 @@ export function AppFrame({ label, nav, badges = {}, sidebarHeader, sidebarFooter
       <div className="lg:pl-60">
         <header className="sticky top-0 z-30 border-b border-border bg-canvas/92 backdrop-blur-md">{topBar({ openNav: () => setNavOpen(true), navOpen })}</header>
         {banner}
-        <main className="mx-auto w-full max-w-[1600px] px-4 py-4 sm:px-6 sm:py-5">{children}</main>
+        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1600px] px-4 py-4 sm:px-6 sm:py-5">
+          {children}
+        </main>
       </div>
     </div>
   );

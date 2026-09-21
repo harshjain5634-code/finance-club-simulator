@@ -20,6 +20,17 @@ function niceScale(min: number, max: number, targetTicks = 4) {
   return { domain: [lower, upper] as [number, number], ticks };
 }
 
+/**
+ * Ticks are formatted from the visible span, not the range name: early in an event every
+ * point falls inside one minute, and HH:MM would then repeat the same label on every tick.
+ */
+function axisFormatter(spanMs: number, preEvent: boolean) {
+  if (preEvent) return (t: number) => formatDate(t, { day: "numeric", month: "short" });
+  if (spanMs > 2 * 86_400_000) return (t: number) => formatDate(t, { day: "numeric", month: "short" });
+  if (spanMs < 10 * 60_000) return (t: number) => formatClock(t, true);
+  return (t: number) => formatClock(t);
+}
+
 type ValueChartProps = {
   points: ChartPoint[];
   range: ChartRange;
@@ -44,9 +55,19 @@ export function ValueChart({ points, range, height = "h-64", baseline, className
 
   return (
     <div ref={scope} className={cn(height, className)} role="img" aria-label={label}>
+      {points.length <= 1 && (
+        <div className="grid h-full min-h-24 place-items-center px-4 text-center">
+          <p className="text-[13px] text-fg-muted">Not enough history to chart yet. The line starts once prices move.</p>
+        </div>
+      )}
       {points.length > 1 && (
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+          {/*
+            accessibilityLayer={false}: it makes the <svg> a focusable role="application" with no
+            accessible name. The wrapper below already exposes the chart as role="img" with a label,
+            and the same numbers are in the table beside it.
+          */}
+          <AreaChart data={points} accessibilityLayer={false} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={palette.accent} stopOpacity={0.16} />
@@ -59,11 +80,11 @@ export function ValueChart({ points, range, height = "h-64", baseline, className
               type="number"
               scale="time"
               domain={[start, end]}
-              tickFormatter={(t: number) => (preEvent ? formatDate(t, { day: "numeric", month: "short" }) : formatClock(t))}
+              tickFormatter={axisFormatter(end - start, preEvent)}
               tick={{ fill: palette.axis, fontSize: 11 }}
               tickLine={false}
               axisLine={false}
-              minTickGap={56}
+              minTickGap={64}
               tickMargin={8}
             />
             <YAxis

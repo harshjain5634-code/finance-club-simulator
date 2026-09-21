@@ -21,7 +21,7 @@ export function TabsTrigger({ className, count, children, ...props }: ComponentP
     >
       {children}
       {count !== undefined && (
-        <span className="rounded bg-surface-hover px-1.5 py-0.5 text-[10px] leading-none text-fg-secondary tabular-nums">{count}</span>
+        <span className="rounded bg-surface-hover px-1.5 py-0.5 text-[11px] leading-none text-fg-secondary tabular-nums">{count}</span>
       )}
     </RadixTabs.Trigger>
   );

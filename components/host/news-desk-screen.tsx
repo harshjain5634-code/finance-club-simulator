@@ -193,7 +193,7 @@ export function NewsDeskScreen() {
                       <div className="mt-2 overflow-x-auto">
                         <table className="w-full min-w-[560px] text-xs">
                           <thead>
-                            <tr className="text-[10px] tracking-wide text-fg-muted uppercase">
+                            <tr className="text-[11px] tracking-wide text-fg-muted uppercase">
                               <th className="py-1 text-left font-medium">Stock</th>
                               <th className="py-1 text-left font-medium">Configured</th>
                               <th className="py-1 text-right font-medium">Resolved</th>

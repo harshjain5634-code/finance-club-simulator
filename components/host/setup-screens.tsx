@@ -453,7 +453,7 @@ function AllocationEditor({ state }: { state: EventState }) {
                 {columns.map((i) => (
                   <th key={i.id} className="px-3 py-2 text-right font-medium">
                     {i.symbol}
-                    <span className="block text-[10px] font-normal normal-case">₹{formatPrice(i.startingPrice)}</span>
+                    <span className="block text-[11px] font-normal normal-case">₹{formatPrice(i.startingPrice)}</span>
                   </th>
                 ))}
                 <th className="px-4 py-2 text-right font-medium">Capital</th>

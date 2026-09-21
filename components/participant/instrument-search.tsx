@@ -65,7 +65,7 @@ export function InstrumentSearch({ rows, hrefFor, className }: { rows: Instrumen
 
   return (
     <div className={cn("relative", className)}>
-      <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-surface px-2.5 transition-colors focus-within:border-accent/70 focus-within:bg-surface-raised hover:border-border-strong">
+      <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-surface px-2.5 transition-colors focus-within:border-accent/70 focus-within:bg-surface-raised hover:border-border-strong has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2">
         <Search className="size-3.5 shrink-0 text-fg-muted" aria-hidden />
         <input
           ref={inputRef}
@@ -97,7 +97,12 @@ export function InstrumentSearch({ rows, hrefFor, className }: { rows: Instrumen
           <p className="border-b border-border px-3 py-2 text-[11px] font-medium tracking-wide text-fg-muted uppercase">
             {query.trim() ? `Results for "${query.trim()}"` : "Event stocks"}
           </p>
-          <ul id={listboxId} role="listbox" aria-label="Stocks" className="max-h-80 overflow-y-auto py-1">
+          {/*
+            tabIndex={-1}: focus stays on the input and moves through options via aria-activedescendant.
+            Chrome also makes scrollable regions tab stops, and this one unmounts on the input's blur,
+            which dropped focus to <body> when tabbing out of the search.
+          */}
+          <ul id={listboxId} role="listbox" aria-label="Stocks" tabIndex={-1} className="max-h-80 overflow-y-auto py-1">
             {results.length === 0 && <li className="px-3 py-6 text-center text-xs text-fg-muted">No matching stocks in this event</li>}
             {results.map((row, index) => (
               <li

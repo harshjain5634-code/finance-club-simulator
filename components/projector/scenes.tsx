@@ -61,7 +61,7 @@ export function StandbyScene({ state, marketState, joinUrl }: { state: EventStat
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <BrandMark className="size-16 rounded-xl [&_svg]:size-9" />
-      <h1 className="mt-7 max-w-[1400px] text-[64px] leading-[1.05] font-semibold tracking-tight text-fg-primary">{state.event.name}</h1>
+      <p className="mt-7 max-w-[1400px] text-[64px] leading-[1.05] font-semibold tracking-tight text-fg-primary">{state.event.name}</p>
       <p className="mt-4 text-[28px] text-fg-secondary">{status}</p>
       <div className="mt-12 flex items-center gap-10 rounded-2xl border-2 border-border-strong bg-surface px-12 py-8">
         <div className="text-left">

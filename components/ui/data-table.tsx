@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,11 @@ export type Column<T> = {
   sortValue?: (row: T) => string | number;
   align?: "left" | "right" | "center";
   sticky?: boolean;
+  /**
+   * Drop this column below the `sm` breakpoint. Use it for secondary detail so the columns that
+   * matter most (value, P&L, return) are on screen without scrolling on a phone.
+   */
+  hideBelowSm?: boolean;
   className?: string;
   headerClassName?: string;
 };
@@ -26,6 +31,8 @@ type DataTableProps<T> = {
   rowLabel?: (row: T) => string;
   empty?: ReactNode;
   minWidth?: number;
+  /** Min width once `hideBelowSm` columns are dropped. Defaults to `minWidth`. */
+  minWidthSm?: number;
   footer?: ReactNode;
   rowClassName?: (row: T) => string | undefined;
   maxHeight?: string;
@@ -42,6 +49,7 @@ export function DataTable<T>({
   rowLabel,
   empty,
   minWidth = 640,
+  minWidthSm,
   footer,
   rowClassName,
   maxHeight,
@@ -77,7 +85,10 @@ export function DataTable<T>({
 
   return (
     <div className={cn("overflow-auto", className)} style={maxHeight ? { maxHeight } : undefined}>
-      <table className="w-full border-collapse text-[13px]" style={{ minWidth }}>
+      <table
+        className="w-full min-w-(--tbl-min-sm) border-collapse text-[13px] sm:min-w-(--tbl-min)"
+        style={{ "--tbl-min": `${minWidth}px`, "--tbl-min-sm": `${minWidthSm ?? minWidth}px` } as CSSProperties}
+      >
         <thead className={cn(maxHeight && "sticky top-0 z-20")}>
           <tr className="border-y border-border bg-surface-raised">
             {columns.map((column) => {
@@ -93,6 +104,7 @@ export function DataTable<T>({
                     dense ? "px-3" : "px-4",
                     alignClass(column.align),
                     column.sticky && "sticky left-0 z-10 bg-surface-raised",
+                    column.hideBelowSm && "hidden sm:table-cell",
                     column.headerClassName,
                   )}
                 >
@@ -156,6 +168,7 @@ export function DataTable<T>({
                     alignClass(column.align),
                     column.align === "right" && "tabular-nums",
                     column.sticky && "sticky left-0 z-10 bg-surface",
+                    column.hideBelowSm && "hidden sm:table-cell",
                     column.className,
                   )}
                 >
