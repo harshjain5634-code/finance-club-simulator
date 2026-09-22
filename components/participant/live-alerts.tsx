@@ -6,7 +6,6 @@ import { Popover as RadixPopover } from "radix-ui";
 import { Bell, Newspaper, X } from "lucide-react";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Delta } from "@/components/ui/delta";
-import { ImpactRow } from "@/components/market/news-modules";
 import { formatINR, formatPrice } from "@/lib/domain/money";
 import type { EventState } from "@/lib/domain/types";
 import { formatClock, formatRelative } from "@/lib/format";
@@ -16,7 +15,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { markNewsRead, useNewsLastSeen } from "./terminal-context";
 
-const TOAST_WINDOW_MS = 15_000;
+const TOAST_WINDOW_MS = 12_000;
 const dismissedKey = (eventId: string) => `finsim:breaking-dismissed:${eventId}`;
 
 function readDismissed(eventId: string): string[] {
@@ -27,15 +26,30 @@ function readDismissed(eventId: string): string[] {
   }
 }
 
+function priorityOf(state: EventState, newsItemId: string) {
+  return state.news.find((n) => n.id === newsItemId)?.priority ?? "NORMAL";
+}
+
 /**
- * Breaking-news toast: appears for 15 seconds after a release, anchored under the top bar so it never covers
- * navigation or blocks the page. The story stays highlighted on the dashboard and news page afterwards.
+ * C4 news alerts (section 10). Breaking (HIGH) interrupts with a card under the top bar for 12 seconds and is
+ * announced assertively; Important (NORMAL) is a polite toast; Update (LOW) only raises the News badge.
+ * Only released headlines and the observed price move are shown, never configured effects.
  */
 export function BreakingNewsToast({ state, code }: { state: EventState; code: string }) {
   const now = useNow();
   const [dismissed, setDismissed] = useState<string[]>(() => readDismissed(state.event.id));
-  const latest = releasesNewestFirst(state)[0];
+  const latest = releasesNewestFirst(state).find((r) => priorityOf(state, r.newsItemId) === "HIGH");
   const visible = latest && now - latest.releasedAt < TOAST_WINDOW_MS && !dismissed.includes(latest.id);
+  const releaseIds = releasesNewestFirst(state).map((r) => r.id);
+
+  useNewIds(releaseIds, (fresh) => {
+    for (const id of fresh) {
+      const release = state.newsReleases.find((r) => r.id === id);
+      if (!release || priorityOf(state, release.newsItemId) !== "NORMAL") continue;
+      const symbols = release.impacts.map((i) => symbolOf(state)(i.instrumentId)).join(", ");
+      toast.info(`Important${symbols ? ` · ${symbols}` : ""}`, release.headline);
+    }
+  });
 
   const dismiss = (id: string) => {
     const next = [...dismissed, id].slice(-50);
@@ -48,39 +62,45 @@ export function BreakingNewsToast({ state, code }: { state: EventState; code: st
   };
 
   if (!visible) return null;
+  const moves = latest.impacts.slice(0, 2);
   return (
-    <div role="alert" aria-live="assertive" className="fixed top-[4.25rem] right-3 z-[65] w-[min(26rem,calc(100vw-1.5rem))] animate-slide-in-right sm:right-5">
-      <div className="overflow-hidden rounded-lg border border-warning/50 bg-surface-raised shadow-2xl shadow-black/50">
-        <div className="flex items-center justify-between gap-3 border-b border-warning/30 bg-warning/12 px-3.5 py-2">
-          <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.16em] text-warning uppercase">
-            <span className="size-1.5 animate-pulse-dot rounded-full bg-warning" aria-hidden />
-            Breaking news
+    <div role="alert" aria-live="assertive" className="fixed top-[4.5rem] right-3 z-[65] w-[min(35rem,calc(100vw-1.5rem))] animate-fade-in sm:right-6">
+      <div className="overflow-hidden rounded-lg border border-warning bg-surface-raised shadow-popover">
+        <div className="flex gap-3 px-4 pt-4 pb-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-md bg-warning-soft text-warning">
+            <Newspaper className="size-4" aria-hidden />
           </span>
-          <span className="flex items-center gap-2">
-            <span className="text-[11px] text-fg-secondary tabular-nums">{formatClock(latest.releasedAt, true)}</span>
-            <button type="button" onClick={() => dismiss(latest.id)} className="grid size-6 place-items-center rounded text-fg-muted hover:bg-surface-hover hover:text-fg-primary" aria-label="Dismiss breaking news">
-              <X className="size-3.5" />
-            </button>
-          </span>
-        </div>
-        <div className="px-3.5 py-3">
-          <p className="text-[14px] leading-snug font-semibold text-fg-primary">{latest.headline}</p>
-          {latest.impacts.length > 0 && (
-            <div className="mt-2.5 flex flex-col gap-1.5">
-              {latest.impacts.slice(0, 3).map((impact) => (
-                <ImpactRow key={impact.instrumentId} state={state} impact={impact} size="sm" />
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-2 text-caption">
+              <span className="inline-flex h-[22px] items-center gap-1.5 rounded-sm bg-warning-soft px-2 font-medium text-warning">
+                <span aria-hidden className="size-1.5 rounded-full bg-current" />
+                Breaking news
+              </span>
+              <span className="font-mono text-fg-muted">{formatClock(latest.releasedAt)}</span>
+            </p>
+            <p className="mt-2 text-[15px] leading-[22px] font-semibold text-fg-primary">{latest.headline}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {moves.map((impact) => (
+                <span key={impact.instrumentId} className="inline-flex items-center gap-1.5 rounded-xs border border-border-strong px-1.5 py-0.5 font-mono text-caption text-fg-secondary">
+                  {symbolOf(state)(impact.instrumentId)} <Delta value={((impact.newPrice - impact.previousPrice) / impact.previousPrice) * 100} showArrow />
+                </span>
               ))}
+              <span className="ml-auto flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => dismiss(latest.id)}>
+                  Dismiss
+                </Button>
+                <Link href={`/event/${code}/news?story=${latest.id}`} onClick={() => dismiss(latest.id)} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+                  Read story
+                </Link>
+              </span>
             </div>
-          )}
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <span className="text-[11px] text-fg-muted">Prices have already updated.</span>
-            <Link href={`/event/${code}/news`} onClick={() => dismiss(latest.id)} className={buttonClasses({ variant: "secondary", size: "sm" })}>
-              Read the story
-            </Link>
           </div>
+          <button type="button" onClick={() => dismiss(latest.id)} className="-mt-1 -mr-1 grid size-7 place-items-center self-start rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg-primary" aria-label="Dismiss breaking news">
+            <X className="size-4" />
+          </button>
         </div>
-        <div className="h-0.5 bg-surface-hover">
-          <div key={latest.id} className="h-full origin-left bg-warning" style={{ animation: `toast-countdown ${TOAST_WINDOW_MS}ms linear forwards` }} />
+        <div className="h-0.5 bg-canvas-subtle">
+          <div key={latest.id} className="h-full origin-left bg-warning motion-reduce:hidden" style={{ animation: `toast-countdown ${TOAST_WINDOW_MS}ms linear forwards` }} />
         </div>
         <style>{`@keyframes toast-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }`}</style>
       </div>
