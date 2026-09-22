@@ -47,7 +47,7 @@ function scale(values: number[]) {
  * events, so the line is a step line whose colour follows its direction against the baseline. Every move has a
  * marker: numbered circles for news, diamonds for host changes; dotted rules mark round boundaries, an accent line
  * marks now, and the rest of the round is shaded so the chart doubles as a round clock. The crosshair snaps to
- * points and the tooltip names the move. A table of the same moves sits beside it for screen readers.
+ * points and the tooltip names the move; the same series is also rendered as a screen-reader table.
  */
 export function PriceChart({ points, baseline, baselineLabel, moves, trades = [], boundaries = [], axisEnd, now, daily = false, label, className }: PriceChartProps) {
   const scope = useRef<HTMLDivElement>(null);
@@ -68,22 +68,36 @@ export function PriceChart({ points, baseline, baselineLabel, moves, trades = []
   const { domain, ticks } = scale(values);
   const visibleMoves = moves.filter((m) => m.at >= start && m.at <= end && m.source !== "OPENING");
   const visibleTrades = trades.filter((t) => t.t >= start && t.t <= end);
+  // A marker sitting exactly on the first point would be sliced in half by the axis edge.
+  const axisStart = start - Math.max(1000, (end - start) * 0.03);
   const fmtTime = daily ? (t: number) => formatDate(t, { day: "numeric", month: "short" }) : (t: number) => formatClock(t);
   const moveAt = (t: number) => visibleMoves.find((m) => Math.abs(m.at - t) < 1500);
 
   return (
-    <div ref={scope} className={cn("h-72 lg:h-80", className)} role="img" aria-label={label}>
+    <div ref={scope} className={cn("relative h-72 lg:h-80", className)}>
+      <ChartTable points={points} moves={visibleMoves} baseline={baseline} baselineLabel={baselineLabel} label={label} daily={daily} />
+      <div aria-hidden className="h-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={points} accessibilityLayer={false} margin={{ top: 28, right: 8, bottom: 4, left: 0 }}>
           <CartesianGrid vertical={false} stroke={palette.grid} />
-          <XAxis dataKey="t" type="number" scale="time" domain={[start, end]} tickFormatter={fmtTime} tick={{ fill: palette.axis, fontSize: 12, fontFamily: "var(--font-dm-mono)" }} tickLine={false} axisLine={false} minTickGap={72} tickMargin={8} />
+          <XAxis dataKey="t" type="number" scale="time" domain={[axisStart, end]} tickFormatter={fmtTime} tick={{ fill: palette.axis, fontSize: 12, fontFamily: "var(--font-dm-mono)" }} tickLine={false} axisLine={false} minTickGap={72} tickMargin={8} />
           <YAxis orientation="right" domain={domain} ticks={ticks} tickFormatter={(v: number) => formatPrice(v)} tick={{ fill: palette.axis, fontSize: 12, fontFamily: "var(--font-dm-mono)" }} tickLine={false} axisLine={false} width={72} />
           {axisEnd && now < end && <ReferenceArea x1={Math.max(now, start)} x2={end} fill={palette.canvas} fillOpacity={0.55} ifOverflow="hidden" />}
           {boundaries
             .filter((b) => b.t >= start && b.t <= end)
-            .map((b) => (
-              <ReferenceLine key={`b-${b.t}-${b.label}`} x={b.t} stroke={palette.cursor} strokeDasharray="2 3" label={{ value: b.label, position: "insideTopLeft", fill: palette.axis, fontSize: 12, dy: -22 }} />
-            ))}
+            .map((b) => {
+              // Drop the caption when it would sit on top of the "Now" label; the dotted line still marks the boundary.
+              const crowded = axisEnd !== undefined && Math.abs(b.t - now) < (end - start) * 0.12;
+              return (
+                <ReferenceLine
+                  key={`b-${b.t}-${b.label}`}
+                  x={b.t}
+                  stroke={palette.cursor}
+                  strokeDasharray="2 3"
+                  label={crowded ? undefined : { value: b.label, position: "insideTopLeft", fill: palette.axis, fontSize: 12, dy: -22 }}
+                />
+              );
+            })}
           <ReferenceLine y={baseline} stroke={palette.muted} strokeDasharray="4 4" label={{ value: baselineLabel, position: "insideBottomRight", fill: palette.axis, fontSize: 12 }} />
           {axisEnd && now <= end && now >= start && <ReferenceLine x={now} stroke={palette.accent} strokeWidth={1.5} label={{ value: `Now ${formatClock(now)}`, position: "top", fill: palette.accent, fontSize: 12, fontWeight: 600 }} />}
           <Tooltip
@@ -139,7 +153,45 @@ export function PriceChart({ points, baseline, baselineLabel, moves, trades = []
           )}
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </div>
+  );
+}
+
+/**
+ * The same series as a table, visible only to screen readers and to "find in page". Rows are the price changes,
+ * each with what caused it, so the chart is never the only way to reach the numbers (C4 section 21).
+ */
+function ChartTable({ points, moves, baseline, baselineLabel, label, daily }: { points: ChartPoint[]; moves: PriceMove[]; baseline: number; baselineLabel: string; label: string; daily: boolean }) {
+  const time = daily ? (t: number) => formatDate(t, { day: "numeric", month: "short" }) : (t: number) => formatClock(t, true);
+  const moveAt = (t: number) => moves.find((m) => Math.abs(m.at - t) < 1500);
+  const reason = (m: PriceMove | undefined) =>
+    !m ? "" : m.source === "NEWS" ? `News${m.newsNumber ? ` #${m.newsNumber}` : ""}${m.headline ? `: ${m.headline}` : ""}` : m.source === "MANUAL" ? "Host price change" : "";
+  return (
+    <table className="sr-only">
+      <caption>{label}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Time</th>
+          <th scope="col">Price</th>
+          <th scope="col">Change vs {baselineLabel.toLowerCase()}</th>
+          <th scope="col">What moved it</th>
+        </tr>
+      </thead>
+      <tbody>
+        {points.map((point, index) => {
+          const pct = changePct(baseline, point.value);
+          return (
+            <tr key={`${point.t}-${index}`}>
+              <td>{time(point.t)}</td>
+              <td>₹{formatPrice(point.value)}</td>
+              <td>{pct > 0 ? "up" : pct < 0 ? "down" : "level"} {formatPct(Math.abs(pct), { signed: false })}</td>
+              <td>{reason(moveAt(point.t))}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 

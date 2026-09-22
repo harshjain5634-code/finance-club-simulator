@@ -54,7 +54,10 @@ export function Delta({ value, format = "percent", decimals = 2, variant = "text
           <path d="M4 1 7.5 6.5h-7z" />
         </svg>
       )}
-      {label}
+      <span aria-hidden>{label}</span>
+      <span className="sr-only">
+        {trend === "positive" ? "up" : trend === "negative" ? "down" : "no change"} {label.replace(/^[+−-]/, "")}
+      </span>
     </span>
   );
 }

@@ -393,4 +393,9 @@
   .skeleton {
     animation: none;
   }
+  /* A scrolling ticker would otherwise snap to its end frame; hold it at the start as a static list. */
+  .animate-ticker {
+    animation: none !important;
+    transform: none !important;
+  }
 }

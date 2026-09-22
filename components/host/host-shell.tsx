@@ -134,7 +134,7 @@ function HostRail({ nav, badges, onHelp }: { nav: NavGroup[]; badges: Record<str
       <nav className="mt-1 flex flex-1 flex-col items-center overflow-y-auto">
         {nav.map((group) => (
           <div key={group.label} className="flex flex-col items-center pt-3">
-            <p className="pb-1.5 text-[10px] leading-4 font-semibold tracking-[0.08em] text-fg-muted uppercase">{group.label}</p>
+            <p className="pb-1.5 text-[11px] leading-4 font-semibold tracking-[0.06em] text-fg-muted uppercase">{group.label}</p>
             <ul className="flex flex-col gap-1">
               {group.items.map((item) => {
                 const active = isActive(pathname, item);
