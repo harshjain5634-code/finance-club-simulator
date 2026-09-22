@@ -260,6 +260,8 @@ export type TradeProposal = {
   tradeId: string | null;
   failureReason: string | null;
   rejectionReason: string | null;
+  /** Set when this proposal was sent as a counter-offer; the original stays in history as REJECTED. */
+  counterOfProposalId?: string | null;
 };
 
 export type Trade = {

@@ -115,6 +115,10 @@ export const acceptProposal = (eventId: string, teamId: string, proposalId: stri
     p2p.acceptProposal(s, c, { proposalId, teamId }),
   );
 
+/** Counter-offer: rejects the original and sends a linked proposal the other way, atomically. */
+export const counterProposal = (eventId: string, teamId: string, input: { originalProposalId: string; quantity: number; price: Paise; idempotencyKey: string }) =>
+  runEventCommand(eventId, { type: "TEAM", teamId }, "trade.propose", "counterProposal", (s, c) => p2p.counterProposal(s, c, { ...input, teamId }));
+
 export const rejectProposal = (eventId: string, teamId: string, proposalId: string, reason?: string) =>
   runEventCommand(eventId, { type: "TEAM", teamId }, "trade.respond", "rejectProposal", (s, c) =>
     p2p.rejectProposal(s, c, { proposalId, teamId, reason }),

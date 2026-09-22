@@ -169,3 +169,60 @@ describe("P2P settlement", () => {
     expect(state.proposals[0].status).toBe("SETTLED");
   });
 });
+
+describe("Counter-offers", () => {
+  it("rejects the original with a link and sends a new proposal the other way, keeping both records", () => {
+    const state = liveTradingEvent();
+    const original = expectOk(propose(state, { price: rupees(525) }));
+
+    const counter = expectOk(
+      p2p.counterProposal(state, ctx(NOW + 1000, team(BETA)), { originalProposalId: original.id, teamId: BETA, quantity: 15, price: rupees(510), idempotencyKey: "counter-1" }),
+    );
+
+    const stored = state.proposals.find((p) => p.id === original.id)!;
+    expect(stored.status).toBe("REJECTED");
+    expect(stored.rejectionReason).toBe(`Countered with ${counter.id}`);
+    expect(counter).toMatchObject({ proposerTeamId: BETA, counterpartyTeamId: ALPHA, side: "BUY", instrumentId: NOVA, quantity: 15, price: rupees(510), status: "PROPOSED", counterOfProposalId: original.id });
+    expect(state.proposals).toHaveLength(2);
+    expect(state.trades).toHaveLength(0);
+    const rejection = state.audit.find((a) => a.type === "TRADE_REJECTED")!;
+    expect(rejection.refs).toMatchObject({ proposalId: original.id, counterProposalId: counter.id });
+    const proposed = state.audit.filter((a) => a.type === "TRADE_PROPOSED").at(-1)!;
+    expect(proposed.refs.counterOfProposalId).toBe(original.id);
+  });
+
+  it("settles the counter normally when the original proposer accepts it", () => {
+    const state = liveTradingEvent();
+    const original = expectOk(propose(state));
+    const counter = expectOk(p2p.counterProposal(state, ctx(NOW + 1000, team(BETA)), { originalProposalId: original.id, teamId: BETA, quantity: 10, price: rupees(505), idempotencyKey: "counter-2" }));
+    const outcome = expectOk(p2p.acceptProposal(state, ctx(NOW + 2000, team(ALPHA)), { proposalId: counter.id, teamId: ALPHA }));
+    expect(outcome.kind).toBe("SETTLED");
+    expect(state.trades).toHaveLength(1);
+    expect(state.trades[0]).toMatchObject({ buyerTeamId: BETA, sellerTeamId: ALPHA, quantity: 10, price: rupees(505) });
+  });
+
+  it("changes nothing when the counter is invalid, and only the receiving team can counter", () => {
+    const state = liveTradingEvent();
+    const original = expectOk(propose(state));
+    const outside = p2p.counterProposal(state, ctx(NOW + 1000, team(BETA)), { originalProposalId: original.id, teamId: BETA, quantity: 10, price: rupees(900), idempotencyKey: "counter-3" });
+    expect(outside.ok).toBe(false);
+    expect(state.proposals.find((p) => p.id === original.id)!.status).toBe("PROPOSED");
+    expect(state.proposals).toHaveLength(1);
+
+    const wrongTeam = p2p.counterProposal(state, ctx(NOW + 1000, team(ALPHA)), { originalProposalId: original.id, teamId: ALPHA, quantity: 10, price: rupees(505), idempotencyKey: "counter-4" });
+    expect(wrongTeam.ok).toBe(false);
+  });
+
+  it("is idempotent and refuses to counter a proposal that is no longer open", () => {
+    const state = liveTradingEvent();
+    const original = expectOk(propose(state));
+    const args = { originalProposalId: original.id, teamId: BETA, quantity: 10, price: rupees(505), idempotencyKey: "counter-5" };
+    const first = expectOk(p2p.counterProposal(state, ctx(NOW + 1000, team(BETA)), args));
+    const again = expectOk(p2p.counterProposal(state, ctx(NOW + 1500, team(BETA)), args));
+    expect(again.id).toBe(first.id);
+    expect(state.proposals).toHaveLength(2);
+
+    const other = p2p.counterProposal(state, ctx(NOW + 2000, team(BETA)), { ...args, idempotencyKey: "counter-6" });
+    expect(other.ok).toBe(false);
+  });
+});

@@ -45,6 +45,8 @@ export type ProposalInput = {
   quantity: number;
   price: Paise;
   idempotencyKey: string;
+  /** Links a counter-offer to the proposal it answers (see counterProposal). */
+  counterOfProposalId?: string | null;
 };
 
 export type ValidationIssue = { field: "quantity" | "price" | "counterparty" | "instrument" | "market" | "resources" | "limit"; message: string };
@@ -132,6 +134,7 @@ export function proposeTrade(state: EventState, ctx: OpContext, input: ProposalI
     tradeId: null,
     failureReason: null,
     rejectionReason: null,
+    counterOfProposalId: input.counterOfProposalId ?? null,
   };
   state.proposals.push(proposal);
 
@@ -143,7 +146,12 @@ export function proposeTrade(state: EventState, ctx: OpContext, input: ProposalI
     teamId: input.proposerTeamId,
     summary: `${names(input.proposerTeamId)} proposed to ${input.side === "BUY" ? "buy" : "sell"} ${input.quantity} ${instrument.symbol} @ ₹${formatPrice(input.price)} ${input.side === "BUY" ? "from" : "to"} ${names(input.counterpartyTeamId)}`,
     after: { status: "PROPOSED", quantity: input.quantity, price: input.price, value: tradeValue(input.price, input.quantity) },
-    refs: { proposalId: proposal.id, instrumentId: instrument.id, counterpartyTeamId: input.counterpartyTeamId },
+    refs: {
+      proposalId: proposal.id,
+      instrumentId: instrument.id,
+      counterpartyTeamId: input.counterpartyTeamId,
+      ...(input.counterOfProposalId ? { counterOfProposalId: input.counterOfProposalId } : {}),
+    },
   });
   return ok(proposal);
 }
@@ -437,4 +445,56 @@ export function rejectByHost(state: EventState, ctx: OpContext, proposalId: stri
     refs: { proposalId: proposal.id },
   });
   return ok(proposal);
+}
+
+/**
+ * Counter-offer (no negotiation engine): the counterparty answers an open proposal with a new proposal on the
+ * same stock, going the other way, at its own quantity and price. In one transaction the original is marked
+ * REJECTED with a "Countered with …" note and the new proposal records counterOfProposalId, so history keeps
+ * both records and the audit trail links them. Nothing is created unless the new proposal is valid.
+ */
+export function counterProposal(
+  state: EventState,
+  ctx: OpContext,
+  input: { originalProposalId: string; teamId: string; quantity: number; price: Paise; idempotencyKey: string },
+): OpResult<TradeProposal> {
+  const original = state.proposals.find((p) => p.id === input.originalProposalId);
+  if (!original) return fail("NOT_FOUND", "Proposal not found.");
+  if (original.counterpartyTeamId !== input.teamId) return fail("FORBIDDEN", "Only the team that received this proposal can counter it.");
+
+  const replay = state.proposals.find((p) => p.proposerTeamId === input.teamId && p.idempotencyKey === input.idempotencyKey);
+  if (replay) return ok(replay);
+
+  if (expireIfDue(state, ctx, original)) return fail("EXPIRED", "This proposal has already expired.", true);
+  if (original.status !== "PROPOSED") return fail("NOT_OPEN", "This proposal is no longer open.");
+
+  const counterInput: ProposalInput = {
+    proposerTeamId: input.teamId,
+    counterpartyTeamId: original.proposerTeamId,
+    side: original.side === "BUY" ? "SELL" : "BUY",
+    instrumentId: original.instrumentId,
+    quantity: input.quantity,
+    price: input.price,
+    idempotencyKey: input.idempotencyKey,
+    counterOfProposalId: original.id,
+  };
+  const issues = validateProposal(state, counterInput, ctx.now);
+  if (issues.length > 0) return fail("INVALID_PROPOSAL", issues[0].message);
+
+  const created = proposeTrade(state, ctx, counterInput);
+  if (!created.ok) return created;
+
+  const note = `Countered with ${created.value.id}`;
+  transition(original, "REJECTED", ctx.now, note);
+  original.rejectionReason = note;
+  appendAudit(state, {
+    at: ctx.now,
+    actor: ctx.actor,
+    type: "TRADE_REJECTED",
+    teamId: input.teamId,
+    summary: `${teamNames(state)(input.teamId)} countered proposal ${original.id} with ${created.value.id}`,
+    reason: note,
+    refs: { proposalId: original.id, counterProposalId: created.value.id },
+  });
+  return created;
 }
