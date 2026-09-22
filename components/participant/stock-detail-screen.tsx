@@ -96,7 +96,12 @@ export function StockDetailScreen() {
       ...(r.endedAt ? [{ t: r.endedAt, label: r.type === "BRIEFING" ? "Briefing ended" : `R${r.number} ended` }] : []),
     ])
     .filter((b, index, all) => !all.some((other, j) => j > index && Math.abs(other.t - b.t) < 60_000));
-  const axisEnd = range === "ROUND" && round?.status === "RUNNING" && round.endsAt ? round.endsAt : undefined;
+  // The axis keeps a little room ahead of "now" and grows with the round, instead of jumping straight to the full
+  // 15 minutes — otherwise the first minutes of every round squeeze all the prices into a sliver on the left.
+  const axisEnd =
+    range === "ROUND" && round?.status === "RUNNING" && round.endsAt && round.startedAt
+      ? Math.min(round.endsAt, Math.max(now + 90_000, now + (now - round.startedAt) * 0.35))
+      : undefined;
   const recentMoves = [...moves].reverse().slice(0, 6);
   const maxBuy = Math.floor(cash / row.price);
 
@@ -155,7 +160,7 @@ export function StockDetailScreen() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-0">
               <h2 className="text-h3 font-semibold text-fg-primary">Price · {range === "ROUND" && round ? (round.type === "BRIEFING" ? "Briefing" : `Round ${round.number}`) : range === "EVENT" ? "Event" : "30 days before the event"}</h2>
-              <p className="text-caption text-fg-muted">{range === "ROUND" && axisEnd ? `${formatClock(round!.startedAt!)} – ${formatClock(axisEnd)} · the axis spans the whole round` : range === "PRE_EVENT" ? "Daily closes (illustrative history)" : "Prices change only at price events"}</p>
+              <p className="text-caption text-fg-muted">{range === "ROUND" && axisEnd ? `${formatClock(round!.startedAt!)} – ${formatClock(round!.endsAt!)} · the axis fills as the round runs` : range === "PRE_EVENT" ? "Daily closes (illustrative history)" : "Prices change only at price events"}</p>
             </div>
             <SegmentedControl
               className="ml-auto"

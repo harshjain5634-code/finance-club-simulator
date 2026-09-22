@@ -25,7 +25,7 @@ import { useWatchlist } from "./watchlist";
 type View = "ALL" | "WATCHLIST" | "OWNED" | "HALTED";
 
 /** Indian money shorthand: full rupees below a lakh, then "₹14.80L" / "₹1.20Cr". */
-const volumeLabel = (paise: number) => (Math.abs(paise) < 1e7 ? formatINR(paise, 0) : formatCompactINR(paise));
+const volumeLabel = (paise: number) => (Math.abs(paise) < 1e9 ? formatINR(paise, 0) : formatCompactINR(paise));
 
 /**
  * C4 Markets overview (section 08): a breadth strip (what moved since the round opened, the biggest move, round
