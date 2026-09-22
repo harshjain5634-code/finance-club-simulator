@@ -151,12 +151,12 @@ export function ExportsScreen() {
           <ul className="divide-y divide-border">
             {report.checks.map((check) => (
               <li key={check.id} className="flex items-start gap-3 px-4 py-2.5">
-                {check.passed ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-accent" /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" />}
+                {check.passed ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-accent-text" /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" />}
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-fg-primary">{check.label}</p>
                   <p className="text-xs text-fg-muted">{check.detail}</p>
                 </div>
-                <span className={cn("ml-auto text-xs font-semibold", check.passed ? "text-accent" : "text-warning")}>{check.passed ? "PASS" : "FAIL"}</span>
+                <span className={cn("ml-auto text-xs font-semibold", check.passed ? "text-accent-text" : "text-warning")}>{check.passed ? "PASS" : "FAIL"}</span>
               </li>
             ))}
           </ul>

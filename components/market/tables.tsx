@@ -328,7 +328,7 @@ export function LeaderboardTable({ rows, highlightTeamId, pinnedRow, compact = f
       cell: (r) => (
         <span className="flex items-center gap-2.5">
           <Avatar name={r.teamName} size="sm" tone={r.teamId === highlightTeamId ? "accent" : "neutral"} />
-          <span className={cn("font-medium", r.teamId === highlightTeamId ? "text-accent" : "text-fg-primary")}>
+          <span className={cn("font-medium", r.teamId === highlightTeamId ? "text-accent-text" : "text-fg-primary")}>
             {r.teamName}
             {r.teamId === highlightTeamId && <span className="ml-1.5 text-[11px] font-normal text-fg-muted">(you)</span>}
           </span>
@@ -353,7 +353,7 @@ export function LeaderboardTable({ rows, highlightTeamId, pinnedRow, compact = f
             <tr className="border-t-2 border-dashed border-border-strong bg-accent/6">
               <td className="px-4 py-2 font-semibold tabular-nums">#{pinnedRow.rank}</td>
               <td className="px-4"><RankMovement movement={pinnedRow.movement} /></td>
-              <td className="px-4 font-medium text-accent">{pinnedRow.teamName} <span className="text-[11px] font-normal text-fg-muted">(you)</span></td>
+              <td className="px-4 font-medium text-accent-text">{pinnedRow.teamName} <span className="text-[11px] font-normal text-fg-muted">(you)</span></td>
               <td className="px-4 text-right font-medium tabular-nums">{formatINR(pinnedRow.netWorth)}</td>
               <td className="px-4 text-right"><Delta value={pinnedRow.returnPct} variant="pill" /></td>
               {!compact && <td className="px-4 text-right"><Delta value={pinnedRow.roundPnl} format="inr" /></td>}

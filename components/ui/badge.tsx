@@ -5,7 +5,7 @@ export type BadgeTone = "neutral" | "accent" | "positive" | "negative" | "warnin
 
 const tones: Record<BadgeTone, string> = {
   neutral: "bg-surface-hover text-fg-secondary",
-  accent: "bg-accent/12 text-accent",
+  accent: "bg-accent/12 text-accent-text",
   positive: "bg-positive/10 text-positive",
   negative: "bg-negative/10 text-negative",
   warning: "bg-warning/12 text-warning",

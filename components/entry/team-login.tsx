@@ -36,7 +36,7 @@ export function TeamLogin() {
           title={`No event found for ${code}`}
           description="Check the code with your host and try again."
           action={
-            <Link href="/join" className="text-[13px] text-accent hover:underline">
+            <Link href="/join" className="text-[13px] text-accent-text hover:underline">
               Enter another code
             </Link>
           }

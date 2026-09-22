@@ -44,7 +44,7 @@ export function SceneTitle({ eyebrow, title, aside }: { eyebrow: string; title: 
   return (
     <div className="mb-7 flex items-end justify-between gap-8">
       <div>
-        <p className="text-[16px] font-semibold tracking-[0.2em] text-accent uppercase">{eyebrow}</p>
+        <p className="text-[16px] font-semibold tracking-[0.2em] text-accent-text uppercase">{eyebrow}</p>
         <h2 className="mt-1.5 text-[40px] leading-none font-semibold tracking-tight text-fg-primary">{title}</h2>
       </div>
       {aside && <div className="text-[20px] text-fg-muted">{aside}</div>}
@@ -71,7 +71,7 @@ export function StandbyScene({ state, marketState, joinUrl }: { state: EventStat
         <span className="h-20 w-0.5 bg-border-strong" aria-hidden />
         <div className="text-left">
           <p className="text-[18px] tracking-[0.18em] text-fg-muted uppercase">Event code</p>
-          <p className="mt-1 font-mono text-[72px] leading-none font-bold tracking-[0.08em] text-accent">{state.event.code}</p>
+          <p className="mt-1 font-mono text-[72px] leading-none font-bold tracking-[0.08em] text-accent-text">{state.event.code}</p>
         </div>
       </div>
       <p className="mt-8 text-[20px] text-fg-muted">
@@ -91,7 +91,7 @@ export function RoundStatusScene({ state, marketState, remaining, elapsedPct, no
   return (
     <div className="grid h-full grid-cols-[1.45fr_1fr] gap-14">
       <div className="flex flex-col justify-center">
-        <p className="text-[22px] font-semibold tracking-[0.2em] text-accent uppercase">{roundLabel(state, round, true)}</p>
+        <p className="text-[22px] font-semibold tracking-[0.2em] text-accent-text uppercase">{roundLabel(state, round, true)}</p>
         <h2 className="mt-2 text-[56px] leading-tight font-semibold tracking-tight text-fg-primary">{round?.name ?? state.event.name}</h2>
         <p className={cn("mt-4 font-mono text-[200px] leading-none font-semibold tracking-tight tabular-nums", !active ? "text-fg-muted" : round?.status === "RUNNING" && remaining <= 60_000 ? "text-warning" : "text-fg-primary")}>
           {active ? formatDuration(remaining) : "--:--"}
@@ -192,7 +192,7 @@ function LeaderRow({ row, height, grid }: { row: LeaderboardRow; height: number;
   const compact = height < 48;
   return (
     <li className={cn("grid items-center gap-x-5 border-b border-border", grid, row.rank <= 3 && "bg-surface/70")} style={{ height }}>
-      <span className={cn("pl-2 font-mono font-bold tabular-nums", compact ? "text-[22px]" : "text-[28px]", row.rank === 1 ? "text-accent" : "text-fg-primary")}>#{row.rank}</span>
+      <span className={cn("pl-2 font-mono font-bold tabular-nums", compact ? "text-[22px]" : "text-[28px]", row.rank === 1 ? "text-accent-text" : "text-fg-primary")}>#{row.rank}</span>
       <span className={cn("flex items-center gap-1 font-semibold tabular-nums", compact ? "text-[16px]" : "text-[20px]", row.movement > 0 ? "text-positive" : row.movement < 0 ? "text-negative" : "text-fg-muted")}>
         {row.movement === 0 ? (
           "—"
@@ -324,7 +324,7 @@ export function NewsWallScene({ state, now }: { state: EventState; now: number }
         <div className="grid min-h-0 flex-1 grid-cols-[1.35fr_1fr] gap-8">
           <article className="flex min-h-0 flex-col self-start rounded-2xl border-2 border-accent/40 bg-surface px-10 py-8">
             <p className="text-[18px] text-fg-muted">
-              <span className="font-semibold text-accent uppercase">Latest</span> · {formatClock(lead.releasedAt)} · {formatRelative(lead.releasedAt, now)}
+              <span className="font-semibold text-accent-text uppercase">Latest</span> · {formatClock(lead.releasedAt)} · {formatRelative(lead.releasedAt, now)}
             </p>
             <h3 className="mt-3 line-clamp-3 text-[44px] leading-[1.12] font-semibold text-fg-primary">{lead.headline}</h3>
             {lead.body && <p className="mt-4 line-clamp-3 text-[22px] leading-relaxed text-fg-secondary">{lead.body}</p>}
@@ -397,7 +397,7 @@ export function ProjectorImpactRow({ state, impact, size = "md" }: { state: Even
 export function MessageScene({ title, body, eventName, tone: messageTone = "default" }: { title: string; body: string; eventName: string; tone?: "default" | "announcement" }) {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
-      <span className={cn("grid size-20 place-items-center rounded-full", messageTone === "announcement" ? "bg-accent/15 text-accent" : "bg-surface-hover text-fg-secondary")}>
+      <span className={cn("grid size-20 place-items-center rounded-full", messageTone === "announcement" ? "bg-accent/15 text-accent-text" : "bg-surface-hover text-fg-secondary")}>
         <Megaphone className="size-10" />
       </span>
       <p className="mt-6 text-[18px] font-semibold tracking-[0.2em] text-fg-muted uppercase">{eventName}</p>
@@ -425,7 +425,7 @@ export function FinalResultsScene({ state }: { state: EventState }) {
                 <p className={cn("mt-1 font-mono text-[28px] font-semibold tabular-nums", tone(row.returnPct))}>{formatPct(row.returnPct)}</p>
                 <p className="font-mono text-[18px] text-fg-muted tabular-nums">{formatINR(row.netWorth, 0)}</p>
                 <div className={cn("mt-4 flex w-full items-start justify-center rounded-t-2xl border-2 border-b-0 pt-5", heights[index], row.rank === 1 ? "border-accent/60 bg-accent/15" : "border-border-strong bg-surface")}>
-                  <span className={cn("font-mono text-[72px] leading-none font-bold", row.rank === 1 ? "text-accent" : "text-fg-secondary")}>{row.rank}</span>
+                  <span className={cn("font-mono text-[72px] leading-none font-bold", row.rank === 1 ? "text-accent-text" : "text-fg-secondary")}>{row.rank}</span>
                 </div>
               </div>
             ) : (

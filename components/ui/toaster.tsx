@@ -5,7 +5,7 @@ import { dismissToast, useToasts, type ToastTone } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const toneIcon: Record<ToastTone, { icon: LucideIcon; className: string }> = {
-  success: { icon: CircleCheck, className: "text-accent" },
+  success: { icon: CircleCheck, className: "text-accent-text" },
   error: { icon: CircleAlert, className: "text-warning" },
   warning: { icon: TriangleAlert, className: "text-warning" },
   info: { icon: Info, className: "text-fg-secondary" },

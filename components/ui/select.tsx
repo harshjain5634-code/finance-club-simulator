@@ -58,7 +58,7 @@ export function Select({ value, onValueChange, options, placeholder = "Select…
                   {option.hint && <div className="truncate text-[11px] text-fg-muted">{option.hint}</div>}
                 </div>
                 <RadixSelect.ItemIndicator className="absolute right-2.5">
-                  <Check className="size-3.5 text-accent" />
+                  <Check className="size-3.5 text-accent-text" />
                 </RadixSelect.ItemIndicator>
               </RadixSelect.Item>
             ))}

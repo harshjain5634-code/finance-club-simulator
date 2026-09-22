@@ -1,13 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Mono, DM_Sans } from "next/font/google";
 import { MockRuntime } from "@/components/shell/mock-runtime";
 import { TooltipProvider } from "@/components/ui/controls";
 import { Toaster } from "@/components/ui/toaster";
 import { siteConfig } from "@/lib/site";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+// C4 typography: DM Sans for UI, DM Mono where fixed-width figures help scanning (tables, clocks, prices).
+const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const dmMono = DM_Mono({ variable: "--font-dm-mono", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
   title: { default: `${siteConfig.name} · ${siteConfig.product}`, template: `%s · ${siteConfig.name}` },
@@ -15,13 +16,16 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0f16",
-  colorScheme: "dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f5f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0e12" },
+  ],
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" data-theme="dark" className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+    <html lang="en" data-theme="light" className={`${dmSans.variable} ${dmMono.variable} antialiased`} suppressHydrationWarning>
       <body className="min-h-dvh bg-canvas text-fg-primary">
         <TooltipProvider>
           {children}

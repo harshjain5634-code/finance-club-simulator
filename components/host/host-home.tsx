@@ -229,7 +229,7 @@ export function CreateEventWizard() {
                     <span className="grid size-8 place-items-center rounded-md border border-border bg-surface text-fg-secondary">
                       {option.id === BLANK_TEMPLATE_ID ? <FileText className="size-4" /> : <LayoutTemplate className="size-4" />}
                     </span>
-                    {form.templateId === option.id && <Check className="size-4 text-accent" />}
+                    {form.templateId === option.id && <Check className="size-4 text-accent-text" />}
                   </span>
                   <span className="mt-3 text-[14px] font-semibold text-fg-primary">{option.name}</span>
                   <span className="mt-1 text-xs leading-relaxed text-fg-secondary">{option.description}</span>
@@ -248,7 +248,7 @@ export function CreateEventWizard() {
               <Field label="Event name" htmlFor="wiz-name" required className="sm:col-span-2">
                 <Input id="wiz-name" value={form.name} onChange={(e) => update({ name: e.target.value })} />
               </Field>
-              <Field label="Event code" htmlFor="wiz-code" required hint="Teams type this to join. 4–10 capital letters or digits." aside={<button type="button" className="text-[11px] text-accent hover:underline" onClick={() => update({ code: suggestCode(form.name) })}>Suggest</button>}>
+              <Field label="Event code" htmlFor="wiz-code" required hint="Teams type this to join. 4–10 capital letters or digits." aside={<button type="button" className="text-[11px] text-accent-text hover:underline" onClick={() => update({ code: suggestCode(form.name) })}>Suggest</button>}>
                 <Input id="wiz-code" value={form.code} onChange={(e) => update({ code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) })} className="font-mono tracking-wider" />
               </Field>
               <Field label="Event date" htmlFor="wiz-date">

@@ -119,7 +119,7 @@ export function DataTable<T>({
                       )}
                     >
                       {column.header}
-                      <SortIcon aria-hidden className={cn("size-3", active ? "text-accent" : "opacity-0 group-hover:opacity-100")} />
+                      <SortIcon aria-hidden className={cn("size-3", active ? "text-accent-text" : "opacity-0 group-hover:opacity-100")} />
                     </button>
                   ) : (
                     <span className="text-[11px] tracking-wide text-fg-muted uppercase">{column.header}</span>

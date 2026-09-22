@@ -61,7 +61,7 @@ export function ActivityFeed({ state, events, now, limit = 30, className }: { st
             <span
               className={cn(
                 "mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border",
-                meta.tone === "accent" ? "border-accent/30 bg-accent/10 text-accent" : meta.tone === "warning" ? "border-warning/40 bg-warning/10 text-warning" : "border-border bg-surface-raised text-fg-muted",
+                meta.tone === "accent" ? "border-accent/30 bg-accent/10 text-accent-text" : meta.tone === "warning" ? "border-warning/40 bg-warning/10 text-warning" : "border-border bg-surface-raised text-fg-muted",
               )}
             >
               <Icon className="size-3" aria-hidden />

@@ -176,7 +176,7 @@ function PreviewControls({ state, eventId, url }: { state: EventState; eventId: 
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center gap-2 text-[13px]">
-        <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase", takeover ? "bg-warning/15 text-warning" : pinned ? "bg-accent/15 text-accent" : "bg-surface-hover text-fg-secondary")}>
+        <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase", takeover ? "bg-warning/15 text-warning" : pinned ? "bg-accent/15 text-accent-text" : "bg-surface-hover text-fg-secondary")}>
           <Radio className="size-3" />
           {takeover ? "Overlay" : pinned ? "Pinned" : resolution.source === "FORCED" ? "Automatic" : "Rotating"}
         </span>

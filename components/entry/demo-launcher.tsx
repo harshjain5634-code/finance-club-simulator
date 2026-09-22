@@ -98,7 +98,7 @@ export function DemoLauncher() {
             onClick={() => openWindow(url)}
             className="group flex flex-col items-start rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:border-accent/50 hover:bg-surface-raised"
           >
-            <span className="grid size-9 place-items-center rounded-md border border-border bg-surface-raised text-accent">
+            <span className="grid size-9 place-items-center rounded-md border border-border bg-surface-raised text-accent-text">
               <Icon className="size-4" />
             </span>
             <span className="mt-3 flex items-center gap-1.5 text-[14px] font-semibold text-fg-primary">

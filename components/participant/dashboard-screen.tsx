@@ -92,7 +92,7 @@ export function DashboardScreen() {
       {incoming.length > 0 && (
         <Card className="border-accent/40 bg-accent/6">
           <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-            <span className="grid size-8 place-items-center rounded-full bg-accent/15 text-accent">
+            <span className="grid size-8 place-items-center rounded-full bg-accent/15 text-accent-text">
               <Inbox className="size-4" />
             </span>
             <div className="min-w-0 flex-1">

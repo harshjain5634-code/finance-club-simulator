@@ -53,7 +53,7 @@ export function StatePanel({
           className={cn(
             "grid place-items-center rounded-full border",
             size === "md" ? "size-12" : "size-9",
-            tone === "warning" ? "border-warning/40 bg-warning/10 text-warning" : tone === "accent" ? "border-accent/30 bg-accent/10 text-accent" : "border-border bg-surface-raised text-fg-secondary",
+            tone === "warning" ? "border-warning/40 bg-warning/10 text-warning" : tone === "accent" ? "border-accent/30 bg-accent/10 text-accent-text" : "border-border bg-surface-raised text-fg-secondary",
           )}
         >
           {icon}

@@ -111,7 +111,7 @@ export function NewsDeskScreen() {
               <div className="flex flex-col gap-3 px-4 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-accent/30 bg-accent/6 px-4 py-3.5">
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-accent uppercase">
+                    <p className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-accent-text uppercase">
                       <CalendarClock className="size-3.5" /> Random release
                     </p>
                     <p className="mt-1 text-[15px] font-semibold text-fg-primary">

@@ -78,7 +78,7 @@ export function PortfolioScreen() {
           empty={
             <span>
               You don&rsquo;t hold any stocks yet.{" "}
-              <Link href={`/event/${code}/trade?side=BUY`} className="font-medium text-accent hover:underline">
+              <Link href={`/event/${code}/trade?side=BUY`} className="font-medium text-accent-text hover:underline">
                 Buy from another team
               </Link>
             </span>

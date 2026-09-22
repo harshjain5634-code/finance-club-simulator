@@ -12,18 +12,22 @@ export type ChartPalette = {
   cursor: string;
   canvas: string;
   surface: string;
+  muted: string;
+  primary: string;
 };
 
 const FALLBACK: ChartPalette = {
-  accent: "#4b8bf5",
-  positive: "#22c55e",
-  negative: "#f05252",
-  warning: "#f5a524",
-  grid: "#1f2633",
-  axis: "#7a8497",
-  cursor: "#2b3444",
-  canvas: "#0b0f16",
-  surface: "#111620",
+  accent: "#2f4bdb",
+  positive: "#087f63",
+  negative: "#c93a24",
+  warning: "#a35a00",
+  grid: "#eeeeea",
+  axis: "#6b7079",
+  cursor: "#d0cfc8",
+  canvas: "#f5f5f2",
+  surface: "#ffffff",
+  muted: "#6b7079",
+  primary: "#111318",
 };
 
 function readPalette(element: HTMLElement): ChartPalette {
@@ -34,11 +38,13 @@ function readPalette(element: HTMLElement): ChartPalette {
     positive: read("--color-positive", FALLBACK.positive),
     negative: read("--color-negative", FALLBACK.negative),
     warning: read("--color-warning", FALLBACK.warning),
-    grid: read("--color-border", FALLBACK.grid),
+    grid: read("--color-border-subtle", FALLBACK.grid),
     axis: read("--color-fg-muted", FALLBACK.axis),
     cursor: read("--color-border-strong", FALLBACK.cursor),
     canvas: read("--color-canvas", FALLBACK.canvas),
     surface: read("--color-surface", FALLBACK.surface),
+    muted: read("--color-fg-muted", FALLBACK.muted),
+    primary: read("--color-fg-primary", FALLBACK.primary),
   };
 }
 
@@ -61,11 +67,13 @@ export function useChartPalette(scope?: RefObject<HTMLElement | null>): ChartPal
   return palette;
 }
 
-export type ThemeName = "dark" | "light";
+/** Participant themes are user-selectable; host and stage are fixed per surface. */
+export type ThemeName = "dark" | "light" | "host" | "stage";
+export type ParticipantTheme = "dark" | "light";
 
 const PREFERENCE_KEY = "finsim:theme-preference";
 
-export function readThemePreference(): ThemeName | null {
+export function readThemePreference(): ParticipantTheme | null {
   try {
     const value = localStorage.getItem(PREFERENCE_KEY);
     return value === "light" || value === "dark" ? value : null;
@@ -74,7 +82,7 @@ export function readThemePreference(): ThemeName | null {
   }
 }
 
-export function writeThemePreference(theme: ThemeName) {
+export function writeThemePreference(theme: ParticipantTheme) {
   try {
     localStorage.setItem(PREFERENCE_KEY, theme);
   } catch {

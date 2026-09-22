@@ -11,7 +11,7 @@ export default function JoinPage() {
   return (
     <EntryFrame aside={<Link href="/demo" className={buttonClasses({ variant: "ghost", size: "sm" })}>Demo</Link>}>
       <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6">
-        <span className="grid size-10 place-items-center rounded-lg border border-border bg-surface-raised text-accent">
+        <span className="grid size-10 place-items-center rounded-lg border border-border bg-surface-raised text-accent-text">
           <KeyRound className="size-5" />
         </span>
         <h1 className="mt-4 text-xl font-semibold tracking-tight text-fg-primary">Join an event</h1>

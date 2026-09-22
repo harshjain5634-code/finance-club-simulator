@@ -89,7 +89,7 @@ export function AppFrame({ label, nav, badges = {}, sidebarHeader, sidebarFooter
                         )}
                       >
                         {active && <span aria-hidden className="absolute inset-y-1.5 -left-3 w-0.5 rounded-r bg-accent" />}
-                        <Icon aria-hidden strokeWidth={1.75} className={cn("size-4 shrink-0", active ? "text-accent" : "text-fg-muted group-hover:text-fg-secondary")} />
+                        <Icon aria-hidden strokeWidth={1.75} className={cn("size-4 shrink-0", active ? "text-accent-text" : "text-fg-muted group-hover:text-fg-secondary")} />
                         <span className="flex-1 truncate">{item.label}</span>
                         {badge > 0 && (
                           <span className="min-w-5 rounded bg-accent-strong px-1.5 py-0.5 text-center text-[11px] leading-none font-semibold text-white tabular-nums">

@@ -40,7 +40,7 @@ export function InlineBanner({
     accent: "border-accent/30 bg-accent/8 text-fg-secondary",
     warning: "border-warning/40 bg-warning/8 text-fg-secondary",
   };
-  const iconTone = { neutral: "text-fg-secondary", accent: "text-accent", warning: "text-warning" };
+  const iconTone = { neutral: "text-fg-secondary", accent: "text-accent-text", warning: "text-warning" };
   return (
     <div role={tone === "warning" ? "alert" : "status"} className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3.5 py-2.5", tones[tone], className)}>
       {icon && <span className={cn("shrink-0", iconTone[tone])}>{icon}</span>}
@@ -74,7 +74,7 @@ export function CopyField({ value, label, className }: { value: string; label: s
         className="flex h-full shrink-0 items-center gap-1.5 border-l border-border px-2.5 text-xs text-fg-secondary hover:bg-surface-hover hover:text-fg-primary"
         aria-label={`Copy ${label}`}
       >
-        {copied ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
+        {copied ? <Check className="size-3.5 text-accent-text" /> : <Copy className="size-3.5" />}
         {copied ? "Copied" : "Copy"}
       </button>
     </div>
@@ -114,7 +114,7 @@ export function Avatar({ name, size = "md", tone = "neutral", className }: { nam
       aria-hidden
       className={cn(
         "grid shrink-0 place-items-center rounded-md font-semibold",
-        tone === "accent" ? "bg-accent/15 text-accent" : "border border-border bg-surface-raised text-fg-secondary",
+        tone === "accent" ? "bg-accent/15 text-accent-text" : "border border-border bg-surface-raised text-fg-secondary",
         sizes[size],
         className,
       )}
@@ -170,7 +170,7 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
               className={cn(
                 "grid size-6 place-items-center rounded-full border text-[11px] font-semibold tabular-nums",
                 state === "done" && "border-accent-strong bg-accent-strong text-white",
-                state === "current" && "border-accent text-accent",
+                state === "current" && "border-accent text-accent-text",
                 state === "upcoming" && "border-border-strong text-fg-muted",
               )}
             >

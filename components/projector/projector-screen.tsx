@@ -43,8 +43,8 @@ export function ProjectorScreen() {
   const theme = state?.event.projector.theme;
   useEffect(() => {
     if (!theme) return;
-    applyDocumentTheme(theme === "LIGHT" ? "light" : "dark");
-    return () => applyDocumentTheme("dark");
+    applyDocumentTheme(theme === "LIGHT" ? "light" : "stage");
+    return () => applyDocumentTheme("light");
   }, [theme]);
 
   if (state === null) return <div className="h-dvh bg-black" aria-busy="true" />;

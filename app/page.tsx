@@ -79,7 +79,7 @@ export default function LandingPage() {
 
           <div className="rounded-xl border border-border bg-surface p-5">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-8 place-items-center rounded-md border border-border bg-surface-raised text-accent">
+              <span className="grid size-8 place-items-center rounded-md border border-border bg-surface-raised text-accent-text">
                 <Users className="size-4" />
               </span>
               <div>
@@ -130,7 +130,7 @@ export default function LandingPage() {
             { icon: ClipboardList, title: "Every action audited", body: "Trades, adjustments, releases and host actions are recorded with reasons and before/after values." },
           ].map(({ icon: Icon, title, body }) => (
             <div key={title} className="flex gap-3">
-              <Icon className="mt-0.5 size-4 shrink-0 text-accent" />
+              <Icon className="mt-0.5 size-4 shrink-0 text-accent-text" />
               <div>
                 <h3 className="text-[14px] font-semibold text-fg-primary">{title}</h3>
                 <p className="mt-1 text-[13px] leading-relaxed text-fg-secondary">{body}</p>

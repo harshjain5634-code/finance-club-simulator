@@ -47,9 +47,9 @@ export function TerminalShell({ children }: { children: ReactNode }) {
   const policy = state?.event.themePolicy;
   useEffect(() => {
     if (!policy) return;
-    const theme = policy === "FORCE_LIGHT" ? "light" : policy === "FORCE_DARK" ? "dark" : (readThemePreference() ?? "dark");
+    const theme = policy === "FORCE_LIGHT" ? "light" : policy === "FORCE_DARK" ? "dark" : (readThemePreference() ?? "light");
     applyDocumentTheme(theme);
-    return () => applyDocumentTheme("dark");
+    return () => applyDocumentTheme("light");
   }, [policy]);
 
   if (state === null || session === undefined || (session && !team && state)) {
@@ -66,7 +66,7 @@ export function TerminalShell({ children }: { children: ReactNode }) {
           title={`No event with code ${code}`}
           description="Check the event code with your host."
           action={
-            <Link href="/join" className="text-[13px] text-accent hover:underline">
+            <Link href="/join" className="text-[13px] text-accent-text hover:underline">
               Enter a different code
             </Link>
           }

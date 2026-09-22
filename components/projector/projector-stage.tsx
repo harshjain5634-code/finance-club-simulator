@@ -54,7 +54,7 @@ export function ProjectorStage({ state, joinUrl, preview = false, override = nul
   const resolution = resolveProjectorScene(state, now);
   const takeover = override ? overrideTakeover(state, override) : activeTakeover(state, now);
   const scene = override && "scene" in override ? override.scene : resolution.scene;
-  const theme = state.event.projector.theme === "LIGHT" ? "light" : "dark";
+  const theme = state.event.projector.theme === "LIGHT" ? "light" : "stage";
   const warning = marketState === "FROZEN" || marketState === "PAUSED";
 
   return (

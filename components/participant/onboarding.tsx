@@ -59,7 +59,7 @@ export function OnboardingDialog({ eventId, teamId, eventName, teamName }: { eve
           <ol className="flex flex-col gap-2.5">
             {STEPS.map(({ icon: Icon, title, body }, index) => (
               <li key={title} className="flex items-start gap-3.5 rounded-lg border border-border bg-surface-raised/60 px-4 py-3.5">
-                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/12 text-accent">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/12 text-accent-text">
                   <Icon className="size-4" aria-hidden />
                 </span>
                 <div>

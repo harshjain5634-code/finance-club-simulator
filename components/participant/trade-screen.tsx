@@ -198,7 +198,7 @@ function ProposalForm({ state, teamId }: { state: EventState; teamId: string }) 
             label="Price per share"
             htmlFor="trade-price"
             aside={
-              <button type="button" onClick={() => setPrice(reference)} className="rounded text-[11px] text-accent hover:underline">
+              <button type="button" onClick={() => setPrice(reference)} className="rounded text-[11px] text-accent-text hover:underline">
                 Use reference
               </button>
             }
@@ -326,7 +326,7 @@ function ProposalCard({ proposal, state, teamId, direction, canRespond }: { prop
         <p className="text-[14px] text-fg-primary">
           <span className="font-semibold">{direction === "incoming" ? name(other) : `To ${name(other)}`}</span>
           <span className="text-fg-secondary">{direction === "incoming" ? " offers: you " : ": you "}</span>
-          <span className={cn("font-semibold", youBuy ? "text-accent" : "text-fg-primary")}>{youBuy ? "buy" : "sell"}</span>{" "}
+          <span className={cn("font-semibold", youBuy ? "text-accent-text" : "text-fg-primary")}>{youBuy ? "buy" : "sell"}</span>{" "}
           <span className="font-semibold tabular-nums">{formatQuantity(proposal.quantity)}</span> <span className="font-semibold">{instrument.symbol}</span>
           <span className="text-fg-secondary"> at </span>
           <span className="font-semibold tabular-nums">₹{formatPrice(proposal.price)}</span>

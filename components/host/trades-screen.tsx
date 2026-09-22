@@ -76,7 +76,7 @@ export function TradesMonitorScreen() {
                 rowKey={(p) => p.id}
                 minWidth={980}
                 columns={[
-                  { key: "id", header: "Proposal", cell: (p) => <button type="button" className="font-mono text-xs text-accent hover:underline" onClick={() => setSelection({ kind: "proposal", id: p.id })}>{p.id}</button> },
+                  { key: "id", header: "Proposal", cell: (p) => <button type="button" className="font-mono text-xs text-accent-text hover:underline" onClick={() => setSelection({ kind: "proposal", id: p.id })}>{p.id}</button> },
                   { key: "seller", header: "Seller", cell: (p) => name(p.side === "SELL" ? p.proposerTeamId : p.counterpartyTeamId) },
                   { key: "buyer", header: "Buyer", cell: (p) => name(p.side === "BUY" ? p.proposerTeamId : p.counterpartyTeamId) },
                   { key: "stock", header: "Stock", cell: (p) => <span className="font-medium">{symbolOf(state)(p.instrumentId)}</span> },

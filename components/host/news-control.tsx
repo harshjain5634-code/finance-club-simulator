@@ -201,7 +201,7 @@ function RandomBody({ state, now }: { state: EventState; now: number }) {
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] uppercase">
             <span className={cn("size-2 rounded-full", running ? (view.phase === "SCHEDULED" ? "animate-pulse-dot bg-accent" : "bg-warning") : random.status === "PAUSED" ? "bg-warning" : "bg-fg-muted")} aria-hidden />
-            <span className={running && view.phase === "SCHEDULED" ? "text-accent" : random.status === "STOPPED" ? "text-fg-muted" : "text-warning"}>
+            <span className={running && view.phase === "SCHEDULED" ? "text-accent-text" : random.status === "STOPPED" ? "text-fg-muted" : "text-warning"}>
               {random.status === "STOPPED" ? "Random mode · stopped" : random.status === "PAUSED" ? "Random mode · paused" : view.phase === "SCHEDULED" ? "Next random news" : "Random mode · waiting"}
             </span>
           </p>

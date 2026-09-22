@@ -111,7 +111,7 @@ function GeneralForm({ state }: { state: EventState }) {
               <p className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg-secondary">
                 <Badge tone={state.randomNews.mode === "RANDOM" ? "accent" : "neutral"}>{state.randomNews.mode === "RANDOM" ? "Random" : "Manual"}</Badge>
                 Switch between manual and random release live from the
-                <Link href={`${hostBase(state.event.id)}/news`} className="font-medium text-accent hover:underline">
+                <Link href={`${hostBase(state.event.id)}/news`} className="font-medium text-accent-text hover:underline">
                   news desk
                 </Link>
               </p>

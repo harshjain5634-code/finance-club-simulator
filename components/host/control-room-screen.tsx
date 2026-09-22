@@ -76,7 +76,7 @@ export function ControlRoomScreen() {
           <ul className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3">
             {checklist.map((item) => (
               <li key={item.id} className="flex items-center gap-3 bg-surface px-4 py-2.5">
-                <span className={cn("grid size-5 place-items-center rounded-full", item.done ? "bg-accent/15 text-accent" : "border border-border-strong text-fg-muted")}>
+                <span className={cn("grid size-5 place-items-center rounded-full", item.done ? "bg-accent/15 text-accent-text" : "border border-border-strong text-fg-muted")}>
                   {item.done ? <Check className="size-3" strokeWidth={3} /> : <Circle className="size-1.5" />}
                 </span>
                 <div className="min-w-0">
@@ -111,7 +111,7 @@ export function ControlRoomScreen() {
               .slice(0, 5)
               .map((row) => (
                 <li key={row.teamId} className="grid grid-cols-[2rem_2.25rem_minmax(0,1fr)_auto] items-center gap-2 px-4 py-2 text-[13px]">
-                  <span className={cn("font-semibold tabular-nums", row.rank === 1 ? "text-accent" : "text-fg-primary")}>#{row.rank}</span>
+                  <span className={cn("font-semibold tabular-nums", row.rank === 1 ? "text-accent-text" : "text-fg-primary")}>#{row.rank}</span>
                   <RankMovement movement={row.movement} className="text-xs" />
                   <span className="truncate font-medium text-fg-primary">{row.teamName}</span>
                   <span className="text-right leading-tight">
