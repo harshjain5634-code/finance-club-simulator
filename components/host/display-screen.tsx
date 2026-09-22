@@ -1,23 +1,24 @@
 "use client";
 
-import { useEffect, useState, type DragEvent } from "react";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ExternalLink, GripVertical, KeyRound, Megaphone, Pin, Play, Radio, X } from "lucide-react";
+import { useEffect, useState, type DragEvent, type ReactNode } from "react";
+import { ArrowDown, ArrowRight, ArrowUp, CandlestickChart, ExternalLink, Flag, GripVertical, Hourglass, KeyRound, Lock, Megaphone, Newspaper, Pin, Radio, Timer, TrendingUp, Trophy, Zap, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
+import { Dialog, DrawerContent } from "@/components/ui/dialog";
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog";
 import { Switch } from "@/components/ui/controls";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { HelpText } from "@/components/ui/guidance";
-import { CopyField, PageHeader } from "@/components/ui/misc";
+import { CopyField } from "@/components/ui/misc";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select } from "@/components/ui/select";
 import { ProjectorStage, StageScaler } from "@/components/projector/projector-stage";
 import { nextPendingRound } from "@/lib/domain/lifecycle";
 import { activeTakeover, resolveProjectorScene, SCENE_LABEL } from "@/lib/domain/projector";
 import type { EventState, ProjectorScene, ProjectorSceneSetting, ProjectorSettings } from "@/lib/domain/types";
-import { formatDuration } from "@/lib/format";
-import { clearProjectorTakeover, pinProjectorScene, setLeaderboardVisibility, showLatestNewsOnProjector, showProjectorMessage, stepProjectorScene, updateProjector } from "@/lib/mock/commands";
+import { formatClock, formatDuration } from "@/lib/format";
+import { clearProjectorTakeover, pinProjectorScene, setLeaderboardVisibility, showLatestNewsOnProjector, showProjectorMessage, updateProjector } from "@/lib/mock/commands";
 import { useNow } from "@/lib/mock/hooks";
 import { cn } from "@/lib/utils";
 import { hostAction, useHostEvent } from "./host-context";
@@ -33,11 +34,30 @@ const SCENE_HINT: Record<ProjectorScene, string> = {
   FINAL_RESULTS: "Shown automatically when the event ends",
 };
 
+const SCENE_ICON: Record<ProjectorScene, LucideIcon> = {
+  STANDBY: Hourglass,
+  ROUND_STATUS: Timer,
+  LEADERBOARD: Trophy,
+  MARKET_BOARD: CandlestickChart,
+  TOP_MOVERS: TrendingUp,
+  NEWS_WALL: Newspaper,
+  CUSTOM_MESSAGE: Megaphone,
+  FINAL_RESULTS: Flag,
+};
+
+/**
+ * C4 Projector Controller (section 18, frame 119:8003). A program/preview switcher: the left monitor is exactly what
+ * the room sees; the right one shows the cued scene (or the next scene in rotation). Take (T) cuts the program to the
+ * cued scene and holds it, Cut to standby (X), Breaking news (B) and Clear overlay (C). Settings stay secondary.
+ */
 export function DisplayScreen() {
   const { state, eventId } = useHostEvent();
+  const now = useNow();
   const { projector } = state.event;
   const [origin, setOrigin] = useState("");
-  const [regenOpen, setRegenOpen] = useState(false);
+  const [cued, setCued] = useState<ProjectorScene | null>(null);
+  const [breakingOpen, setBreakingOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const value = window.location.origin;
@@ -45,97 +65,307 @@ export function DisplayScreen() {
   }, []);
 
   const url = `${origin}/event/${state.event.code}/projector?key=${projector.projectorKey}`;
-  const save = (input: Parameters<typeof updateProjector>[1], message: string) => hostAction(updateProjector(eventId, input), message);
+  const joinUrl = `${origin.replace(/^https?:\/\//, "")}/join`;
+  const resolution = resolveProjectorScene(state, now);
+  const takeover = activeTakeover(state, now);
+  const onAir = resolution.scene;
+  const next = cued ?? resolution.nextScene;
+  const latest = state.newsReleases.length > 0 ? [...state.newsReleases].sort((a, b) => b.releasedAt - a.releasedAt)[0] : null;
+  const pinned = projector.pinnedScene;
+  const completed = state.event.status === "COMPLETED";
+
+  const take = () => {
+    if (!next || next === onAir) return;
+    void hostAction(pinProjectorScene(eventId, next), `On air: ${SCENE_LABEL[next]}`, "Held on screen. Resume auto-rotate when you're ready.");
+    setCued(null);
+  };
+  const standby = () => hostAction(pinProjectorScene(eventId, "STANDBY"), "On air: Standby");
+  const clear = () => takeover && hostAction(clearProjectorTakeover(eventId), "Overlay cleared");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || e.defaultPrevented) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) return;
+      if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [role="menu"][data-state="open"]')) return;
+      const k = e.key.toLowerCase();
+      const actions: Record<string, (() => void) | undefined> = {
+        t: take,
+        x: () => void standby(),
+        b: latest ? () => setBreakingOpen(true) : undefined,
+        c: () => void clear(),
+      };
+      const action = actions[k];
+      if (action) {
+        e.preventDefault();
+        action();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const onAirLabel = takeover ? (takeover.kind === "NEWS" ? "Breaking news" : "Message") : SCENE_LABEL[onAir];
+  const onAirMeta = takeover
+    ? takeover.remainingMs !== null
+      ? `overlay · ${formatDuration(takeover.remainingMs)}`
+      : "overlay · until cleared"
+    : resolution.source === "PINNED"
+      ? "held"
+      : resolution.sceneRemainingMs !== null
+        ? `on air · ${formatDuration(resolution.sceneRemainingMs)}`
+        : "on air";
 
   return (
-    <div className="flex flex-col gap-3">
-      <PageHeader
-        title="Projector"
-        description="Control what the room sees. Every change reaches all open projector screens instantly."
-        actions={
-          <a href={url} target="_blank" rel="noopener noreferrer" className={buttonClasses({ variant: "primary" })}>
-            Open full screen
-            <ExternalLink className="size-3.5" />
-          </a>
-        }
-      />
+    <div className="flex flex-col gap-4">
+      <h1 className="sr-only">Projector controller</h1>
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px_minmax(0,1fr)]">
+        <Monitor tone="program" label={takeover ? "Program · overlay on air" : "Program · on air"} title={onAirLabel} meta={onAirMeta}>
+          <ProjectorStage state={state} joinUrl={joinUrl} preview />
+        </Monitor>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-        <div className="flex min-w-0 flex-col gap-3 xl:col-span-8">
-          <Card>
-            <CardHeader title="Live preview" subtitle="Exactly what the room sees right now" divider action={<Badge tone="outline">16:9</Badge>} />
-            <div className="flex flex-col gap-3 p-4">
-              <StageScaler className="aspect-video w-full rounded-md border border-border">
-                <ProjectorStage state={state} joinUrl={`${origin.replace(/^https?:\/\//, "")}/join`} preview />
-              </StageScaler>
-              <PreviewControls state={state} eventId={eventId} url={url} />
-            </div>
-          </Card>
-          <SceneList state={state} eventId={eventId} />
+        <div className="flex flex-col gap-2.5 xl:pt-8">
+          <div className="flex items-center justify-center gap-2">
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-sm bg-accent px-2.5 text-caption font-semibold text-accent-fg">
+              <span aria-hidden className="size-1.5 animate-pulse-dot rounded-full bg-current" /> ON AIR
+            </span>
+            <span className="text-[14px] font-medium text-fg-primary">{onAirLabel}</span>
+          </div>
+          <Button variant="primary" size="lg" onClick={take} disabled={!next || next === onAir || completed} shortcut="T">
+            <ArrowRight className="size-4" /> Take{next && next !== onAir ? `: ${SCENE_LABEL[next]}` : ""}
+          </Button>
+          <Button variant="secondary" onClick={() => void standby()} disabled={onAir === "STANDBY" && pinned === "STANDBY"} shortcut="X">
+            Cut to standby
+          </Button>
+          <Button variant="warning-outline" onClick={() => setBreakingOpen(true)} disabled={!latest || state.event.status === "DRAFT" || state.event.status === "READY"} shortcut="B">
+            <Zap className="size-4" /> Breaking news…
+          </Button>
+          <Button variant="ghost" onClick={() => void clear()} disabled={!takeover} shortcut="C">
+            Clear overlay
+          </Button>
+          <p className="text-center text-caption text-fg-muted">
+            {pinned ? (
+              <>
+                Holding {SCENE_LABEL[pinned]} ·{" "}
+                <button type="button" className="font-medium text-accent-text hover:underline" onClick={() => hostAction(pinProjectorScene(eventId, null), "Auto-rotate resumed")}>
+                  Resume auto-rotate
+                </button>
+              </>
+            ) : resolution.nextScene && resolution.sceneRemainingMs !== null ? (
+              `Auto-rotate on · next in ${formatDuration(resolution.sceneRemainingMs)}`
+            ) : (
+              "Auto-rotate on"
+            )}
+          </p>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-3 xl:col-span-4">
-          <MessageCard state={state} eventId={eventId} />
-
-          <Card>
-            <CardHeader title="Display options" divider />
-            <div className="flex flex-col gap-4 px-4 py-4">
-              <LeaderboardVisibility state={state} eventId={eventId} />
-              <Field label="Price ticker" hint="The scrolling price strip along the bottom of the screen.">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Switch checked={projector.tickerEnabled} onCheckedChange={(v) => save({ tickerEnabled: v }, v ? "Ticker shown" : "Ticker hidden")} label="Show price ticker" />
-                  <SegmentedControl<ProjectorSettings["tickerSpeed"]>
-                    options={[
-                      { value: "SLOW", label: "Slow", disabled: !projector.tickerEnabled },
-                      { value: "NORMAL", label: "Normal", disabled: !projector.tickerEnabled },
-                      { value: "FAST", label: "Fast", disabled: !projector.tickerEnabled },
-                    ]}
-                    value={projector.tickerSpeed}
-                    onChange={(v) => save({ tickerSpeed: v }, `Ticker speed: ${v.toLowerCase()}`)}
-                    label="Ticker speed"
-                    size="md"
-                  />
-                </div>
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                <Field label="Breaking news on screen for" htmlFor="breaking-seconds">
-                  <Select
-                    id="breaking-seconds"
-                    value={String(projector.breakingNewsSeconds)}
-                    onValueChange={(v) => save({ breakingNewsSeconds: Number(v) }, `Breaking news shows for ${v} seconds`)}
-                    options={[8, 10, 12, 15, 20, 30].map((s) => ({ value: String(s), label: `${s} seconds` }))}
-                  />
-                </Field>
-                <Field label="Theme">
-                  <SegmentedControl
-                    options={[
-                      { value: "DARK", label: "Dark" },
-                      { value: "LIGHT", label: "Light" },
-                    ]}
-                    value={projector.theme}
-                    onChange={(v) => save({ theme: v }, `Projector theme: ${v.toLowerCase()}`)}
-                    label="Projector theme"
-                    size="md"
-                  />
-                </Field>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <CardHeader title="Projector link" subtitle="Read-only. Open it on the computer connected to the projector." divider />
-            <div className="flex flex-col gap-3 px-4 py-4">
-              <CopyField value={url} label="projector link" />
-              <div>
-                <Button variant="ghost" size="sm" onClick={() => setRegenOpen(true)}>
-                  <KeyRound className="size-3.5" /> Regenerate link
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
+        <Monitor tone="preview" label={cued ? "Cued · press Take" : pinned ? "Next · rotation held" : "Next in rotation"} title={next ? SCENE_LABEL[next] : "Nothing next"} meta={cued ? "not on air" : !pinned && resolution.sceneRemainingMs !== null ? `auto · in ${formatDuration(resolution.sceneRemainingMs)}` : ""}>
+          {next ? <ProjectorStage state={state} joinUrl={joinUrl} preview override={{ scene: next }} /> : <div className="grid h-full place-items-center text-[40px] text-white/40">No scene</div>}
+        </Monitor>
       </div>
 
+      <SceneTiles state={state} eventId={eventId} onAir={takeover ? null : onAir} next={next} cued={cued} onCue={(scene) => setCued(scene === cued || scene === onAir ? null : scene)} />
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
+        <Card>
+          <CardHeader title="Overlays" subtitle="Sit on top of any scene" divider />
+          <div className="flex flex-col gap-4 px-4 py-4">
+            <label className="flex items-start gap-3">
+              <Switch checked={projector.tickerEnabled} onCheckedChange={(v) => hostAction(updateProjector(eventId, { tickerEnabled: v }), v ? "Price ticker on" : "Price ticker off")} label="Price ticker" />
+              <span>
+                <span className="block text-[14px] font-medium text-fg-primary">Price ticker</span>
+                <span className="block text-caption text-fg-muted">Bottom of every scene · {projector.tickerSpeed.toLowerCase()} speed</span>
+              </span>
+            </label>
+            <div className="flex items-start gap-3">
+              <Radio className="mt-0.5 size-4 text-fg-muted" aria-hidden />
+              <span>
+                <span className="block text-[14px] font-medium text-fg-primary">Breaking news takeover</span>
+                <span className="block text-caption text-fg-muted">
+                  Every released story takes over the screen for {projector.breakingNewsSeconds} s, with the round clock still visible.{latest ? ` Last: “${latest.headline}” at ${formatClock(latest.releasedAt)}.` : ""}
+                </span>
+              </span>
+            </div>
+          </div>
+          <div className="border-t border-border">
+            <MessageCard state={state} eventId={eventId} bare />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Projector settings"
+            divider
+            action={
+              <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)}>
+                Edit
+              </Button>
+            }
+          />
+          <dl className="flex flex-col gap-2 px-4 py-4 text-[14px]">
+            {[
+              ["Scenes in rotation", `${projector.scenes.filter((s) => s.enabled && s.scene !== "FINAL_RESULTS").length}`],
+              ["Breaking takeover", `${projector.breakingNewsSeconds} s`],
+              ["Ticker speed", projector.tickerSpeed.charAt(0) + projector.tickerSpeed.slice(1).toLowerCase()],
+              ["Stage theme", projector.theme === "DARK" ? "Dark" : "Light"],
+              ["Leaderboard on screen", state.event.leaderboard.projectorVisibility === "FULL" ? "Full" : state.event.leaderboard.projectorVisibility === "TOP_N" ? `Top ${state.event.leaderboard.projectorTopN}` : "Hidden"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-3">
+                <dt className="text-fg-secondary">{k}</dt>
+                <dd className="font-medium text-fg-primary">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="flex flex-col gap-2 border-t border-border px-4 py-4">
+            <CopyField value={url} label="projector link" />
+            <a href={url} target="_blank" rel="noopener noreferrer" className={buttonClasses({ variant: "secondary", size: "sm", className: "self-start" })}>
+              Open full screen <ExternalLink className="size-3.5" />
+            </a>
+          </div>
+        </Card>
+      </div>
+
+      <ConfirmActionDialog
+        open={breakingOpen}
+        onOpenChange={setBreakingOpen}
+        tier="confirm"
+        tone="warning"
+        title="Show breaking news on the projector?"
+        description={latest ? `“${latest.headline}” takes over the screen for ${projector.breakingNewsSeconds} s. Nothing is released and no price moves; this only replays the latest story.` : "No story has been released yet."}
+        confirmLabel="Show on projector"
+        onConfirm={() => hostAction(showLatestNewsOnProjector(eventId), "Breaking news on the projector")}
+      />
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        {settingsOpen && (
+          <DrawerContent title="Projector settings" description="Every change reaches all open projector screens instantly." width="lg">
+            <SettingsBody state={state} eventId={eventId} />
+          </DrawerContent>
+        )}
+      </Dialog>
+    </div>
+  );
+}
+
+function Monitor({ tone, label, title, meta, children }: { tone: "program" | "preview"; label: string; title: string; meta: string; children: ReactNode }) {
+  return (
+    <section aria-label={label} className={cn("overflow-hidden rounded-lg border-2 bg-surface", tone === "program" ? "border-accent" : "border-border")}>
+      <header className="flex items-center gap-2.5 px-3 py-2">
+        <span className={cn("inline-flex h-6 items-center gap-1.5 rounded-xs px-2 text-caption font-semibold", tone === "program" ? "bg-accent text-accent-fg" : "bg-canvas-subtle text-fg-secondary")}>
+          {tone === "program" && <span aria-hidden className="size-1.5 rounded-full bg-current" />}
+          {label}
+        </span>
+        <span className="truncate text-[14px] font-medium text-fg-primary">{title}</span>
+        <span className="ml-auto shrink-0 font-mono text-caption text-fg-muted">{meta}</span>
+      </header>
+      <StageScaler className="aspect-video w-full">{children}</StageScaler>
+    </section>
+  );
+}
+
+const LIVE_SCENES: ProjectorScene[] = ["LEADERBOARD", "TOP_MOVERS", "MARKET_BOARD", "ROUND_STATUS", "NEWS_WALL"];
+const BETWEEN_SCENES: ProjectorScene[] = ["STANDBY", "CUSTOM_MESSAGE", "FINAL_RESULTS"];
+
+function SceneTiles({ state, eventId, onAir, next, cued, onCue }: { state: EventState; eventId: string; onAir: ProjectorScene | null; next: ProjectorScene | null; cued: ProjectorScene | null; onCue: (scene: ProjectorScene) => void }) {
+  const { projector, leaderboard } = state.event;
+  const setting = (scene: ProjectorScene) => projector.scenes.find((s) => s.scene === scene);
+  const patch = (scene: ProjectorScene, change: Partial<ProjectorSceneSetting>, message: string) =>
+    hostAction(updateProjector(eventId, { scenes: projector.scenes.map((s) => (s.scene === scene ? { ...s, ...change } : s)) }), message);
+  const completed = state.event.status === "COMPLETED";
+
+  const tile = (scene: ProjectorScene) => {
+    const s = setting(scene);
+    if (!s) return null;
+    const Icon = SCENE_ICON[scene];
+    const locked = scene === "FINAL_RESULTS" && !completed;
+    const isOnAir = onAir === scene;
+    const isNext = !isOnAir && next === scene;
+    const hidden = scene === "LEADERBOARD" && leaderboard.projectorVisibility === "HIDDEN";
+    return (
+      <li key={scene} className={cn("relative flex flex-col rounded-lg border p-3", isOnAir ? "border-accent bg-accent-soft" : cued === scene || isNext ? "border-accent/60 bg-surface" : "border-border bg-surface", locked && "opacity-60")}>
+        <button type="button" disabled={locked} onClick={() => onCue(scene)} className="flex flex-1 flex-col items-start text-left focus-visible:outline-none" aria-label={`Cue ${SCENE_LABEL[scene]}`} aria-pressed={cued === scene}>
+          <span className="flex w-full items-center justify-between">
+            <Icon className={cn("size-5", isOnAir ? "text-accent-text" : "text-fg-secondary")} aria-hidden />
+            {isOnAir ? <Badge tone="solid-accent">On air</Badge> : cued === scene ? <Badge tone="info">Cued</Badge> : isNext ? <Badge tone="outline">Next</Badge> : locked ? <Lock className="size-3.5 text-fg-muted" aria-hidden /> : null}
+          </span>
+          <span className="mt-2 text-[14px] font-medium text-fg-primary">{SCENE_LABEL[scene]}</span>
+          <span className="text-caption text-fg-muted">{hidden ? "Leaderboard hidden" : SCENE_HINT[scene].split(" · ")[0]}</span>
+        </button>
+        <span className="mt-3 flex items-center justify-between gap-2">
+          {locked ? (
+            <span className="font-mono text-caption text-fg-muted">after event</span>
+          ) : scene === "FINAL_RESULTS" ? (
+            <span className="font-mono text-caption text-fg-muted">automatic</span>
+          ) : (
+            <DurationInput setting={s} onSave={(seconds) => patch(scene, { durationSeconds: seconds }, `${SCENE_LABEL[scene]} shows for ${seconds}s`)} />
+          )}
+          {scene !== "FINAL_RESULTS" && <Switch checked={s.enabled} onCheckedChange={(enabled) => patch(scene, { enabled }, `${SCENE_LABEL[scene]} ${enabled ? "added to" : "removed from"} rotation`)} label={`${SCENE_LABEL[scene]} in rotation`} />}
+        </span>
+      </li>
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[5fr_3fr]">
+      <div>
+        <p className="eyebrow mb-2 text-fg-muted">During a round</p>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{LIVE_SCENES.map(tile)}</ul>
+      </div>
+      <div>
+        <p className="eyebrow mb-2 text-fg-muted">Between rounds & event</p>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">{BETWEEN_SCENES.map(tile)}</ul>
+      </div>
+    </div>
+  );
+}
+
+function SettingsBody({ state, eventId }: { state: EventState; eventId: string }) {
+  const { projector } = state.event;
+  const [regenOpen, setRegenOpen] = useState(false);
+  const save = (input: Parameters<typeof updateProjector>[1], message: string) => hostAction(updateProjector(eventId, input), message);
+  return (
+    <div className="flex flex-col gap-5">
+      <SceneList state={state} eventId={eventId} />
+      <LeaderboardVisibility state={state} eventId={eventId} />
+      <Field label="Ticker speed">
+        <SegmentedControl<ProjectorSettings["tickerSpeed"]>
+          options={[
+            { value: "SLOW", label: "Slow" },
+            { value: "NORMAL", label: "Normal" },
+            { value: "FAST", label: "Fast" },
+          ]}
+          value={projector.tickerSpeed}
+          onChange={(v) => save({ tickerSpeed: v }, `Ticker speed: ${v.toLowerCase()}`)}
+          label="Ticker speed"
+          size="md"
+        />
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Breaking news on screen for" htmlFor="breaking-seconds">
+          <Select
+            id="breaking-seconds"
+            value={String(projector.breakingNewsSeconds)}
+            onValueChange={(v) => save({ breakingNewsSeconds: Number(v) }, `Breaking news shows for ${v} seconds`)}
+            options={[8, 10, 12, 15, 20, 30].map((s) => ({ value: String(s), label: `${s} seconds` }))}
+          />
+        </Field>
+        <Field label="Stage theme">
+          <SegmentedControl
+            options={[
+              { value: "DARK", label: "Dark" },
+              { value: "LIGHT", label: "Light" },
+            ]}
+            value={projector.theme}
+            onChange={(v) => save({ theme: v }, `Projector theme: ${v.toLowerCase()}`)}
+            label="Projector theme"
+            size="md"
+          />
+        </Field>
+      </div>
+      <div>
+        <Button variant="ghost" size="sm" onClick={() => setRegenOpen(true)}>
+          <KeyRound className="size-3.5" /> Regenerate projector link
+        </Button>
+      </div>
       <ConfirmActionDialog
         open={regenOpen}
         onOpenChange={setRegenOpen}
@@ -149,75 +379,6 @@ export function DisplayScreen() {
     </div>
   );
 }
-
-/* ───────── Preview controls ───────── */
-
-function PreviewControls({ state, eventId, url }: { state: EventState; eventId: string; url: string }) {
-  const now = useNow();
-  const resolution = resolveProjectorScene(state, now);
-  const takeover = activeTakeover(state, now);
-  const pinned = state.event.projector.pinnedScene;
-  const hasNews = state.newsReleases.length > 0;
-  const canStep = resolution.rotation.length > 0;
-
-  let status: string;
-  if (takeover?.kind === "NEWS") status = `Breaking news on screen · ${formatDuration(takeover.remainingMs)} left`;
-  else if (takeover?.kind === "MESSAGE") status = `Message on screen · ${takeover.remainingMs === null ? "until you clear it" : `${formatDuration(takeover.remainingMs)} left`}`;
-  else if (resolution.source === "PINNED") status = `${SCENE_LABEL[resolution.scene]} · pinned`;
-  else if (resolution.source === "FORCED")
-    status =
-      resolution.scene === "FINAL_RESULTS"
-        ? "Final results · the event has ended"
-        : resolution.scene === "STANDBY"
-          ? "Standby · rotation starts when the event goes live"
-          : `${SCENE_LABEL[resolution.scene]} · no scenes enabled for rotation`;
-  else status = `${SCENE_LABEL[resolution.scene]} · ${formatDuration(resolution.sceneRemainingMs ?? 0)} left${resolution.nextScene ? ` · next: ${SCENE_LABEL[resolution.nextScene]}` : ""}`;
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex flex-wrap items-center gap-2 text-[13px]">
-        <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase", takeover ? "bg-warning/15 text-warning" : pinned ? "bg-accent/15 text-accent-text" : "bg-surface-hover text-fg-secondary")}>
-          <Radio className="size-3" />
-          {takeover ? "Overlay" : pinned ? "Pinned" : resolution.source === "FORCED" ? "Automatic" : "Rotating"}
-        </span>
-        <span className="font-medium text-fg-primary tabular-nums" aria-live="polite">
-          Now showing: {status}
-        </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" disabled={!canStep} onClick={() => hostAction(stepProjectorScene(eventId, -1), (scene) => `Projector: ${SCENE_LABEL[scene]}`)}>
-          <ChevronLeft className="size-3.5" /> Previous
-        </Button>
-        <Button variant="secondary" size="sm" disabled={!canStep} onClick={() => hostAction(stepProjectorScene(eventId, 1), (scene) => `Projector: ${SCENE_LABEL[scene]}`)}>
-          Next <ChevronRight className="size-3.5" />
-        </Button>
-        {pinned ? (
-          <Button variant="primary" size="sm" onClick={() => hostAction(pinProjectorScene(eventId, null), "Rotation resumed")}>
-            <Play className="size-3.5" /> Resume rotation
-          </Button>
-        ) : (
-          <Button variant="secondary" size="sm" onClick={() => hostAction(pinProjectorScene(eventId, resolution.scene), `Pinned ${SCENE_LABEL[resolution.scene]}`)}>
-            <Pin className="size-3.5" /> Pin current
-          </Button>
-        )}
-        <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
-        <Button variant="warning-outline" size="sm" disabled={!hasNews} title={hasNews ? undefined : "No news released yet"} onClick={() => hostAction(showLatestNewsOnProjector(eventId), "Latest news shown as breaking news")}>
-          <Megaphone className="size-3.5" /> Show breaking news
-        </Button>
-        {takeover && (
-          <Button variant="ghost" size="sm" onClick={() => hostAction(clearProjectorTakeover(eventId), "Overlay cleared")}>
-            <X className="size-3.5" /> Clear overlay
-          </Button>
-        )}
-        <a href={url} target="_blank" rel="noopener noreferrer" className={buttonClasses({ variant: "ghost", size: "sm", className: "sm:ml-auto" })}>
-          Open full screen <ExternalLink className="size-3.5" />
-        </a>
-      </div>
-    </div>
-  );
-}
-
-/* ───────── Scenes ───────── */
 
 function SceneList({ state, eventId }: { state: EventState; eventId: string }) {
   const now = useNow();
@@ -396,7 +557,7 @@ const MESSAGE_DURATIONS = [
   { value: "UNTIL_CLEARED", label: "Until I clear it" },
 ];
 
-function MessageCard({ state, eventId }: { state: EventState; eventId: string }) {
+function MessageCard({ state, eventId, bare = false }: { state: EventState; eventId: string; bare?: boolean }) {
   const saved = state.event.projector.customMessage;
   const [title, setTitle] = useState(saved.title);
   const [body, setBody] = useState(saved.body);
@@ -410,7 +571,7 @@ function MessageCard({ state, eventId }: { state: EventState; eventId: string })
   const valid = title.trim().length >= 2;
 
   return (
-    <Card>
+    <Wrap bare={bare}>
       <CardHeader title="Custom message" subtitle="Show an announcement over the current scene" divider icon={<Megaphone className="size-4" />} />
       <div className="flex flex-col gap-3 px-4 py-4">
         <div className="flex flex-wrap gap-1.5" aria-label="Message templates">
@@ -452,6 +613,10 @@ function MessageCard({ state, eventId }: { state: EventState; eventId: string })
         </div>
         <HelpText>“Save for rotation” updates the Custom message scene without interrupting the screen.</HelpText>
       </div>
-    </Card>
+    </Wrap>
   );
+}
+
+function Wrap({ bare, children }: { bare: boolean; children: ReactNode }) {
+  return bare ? <div>{children}</div> : <Card>{children}</Card>;
 }
