@@ -10,6 +10,7 @@ import type { HoldingView } from "@/lib/domain/portfolio";
 import type { EventState, LeaderboardRow, Trade, TradeProposal } from "@/lib/domain/types";
 import { formatClock, formatDateTime, formatQuantity, formatShortDate } from "@/lib/format";
 import { instrumentOf, isBuyerFor, symbolOf, teamNameOf, type TeamLedgerRow } from "@/lib/mock/selectors";
+import { sharedRanks } from "@/lib/domain/leaderboard";
 import { cn } from "@/lib/utils";
 import { AdjustmentTypeBadge, JournalTypeBadge, ProposalStatusBadge, SideBadge } from "./status";
 
@@ -318,8 +319,10 @@ export function RankMovement({ movement, hideFlat = false, className }: { moveme
 }
 
 export function LeaderboardTable({ rows, highlightTeamId, pinnedRow, compact = false }: { rows: LeaderboardRow[]; highlightTeamId?: string; pinnedRow?: LeaderboardRow | null; compact?: boolean }) {
+  const ranks = sharedRanks(pinnedRow && !rows.some((r) => r.teamId === pinnedRow.teamId) ? [...rows, pinnedRow] : rows);
+  const label = (r: LeaderboardRow) => ranks[r.teamId]?.label ?? `#${r.rank}`;
   const columns: Column<LeaderboardRow>[] = [
-    { key: "rank", header: "Rank", sortValue: (r) => r.rank, cell: (r) => <span className="font-semibold text-fg-primary tabular-nums">#{r.rank}</span> },
+    { key: "rank", header: "Rank", sortValue: (r) => r.rank, cell: (r) => <span className="font-semibold text-fg-primary tabular-nums">{label(r)}</span> },
     { key: "move", header: "Move", cell: (r) => <RankMovement movement={r.movement} /> },
     {
       key: "team",
@@ -351,7 +354,7 @@ export function LeaderboardTable({ rows, highlightTeamId, pinnedRow, compact = f
         pinnedRow ? (
           <tfoot>
             <tr className="border-t-2 border-dashed border-border-strong bg-accent/6">
-              <td className="px-4 py-2 font-semibold tabular-nums">#{pinnedRow.rank}</td>
+              <td className="px-4 py-2 font-semibold tabular-nums">{label(pinnedRow)}</td>
               <td className="px-4"><RankMovement movement={pinnedRow.movement} /></td>
               <td className="px-4 font-medium text-accent-text">{pinnedRow.teamName} <span className="text-[11px] font-normal text-fg-muted">(you)</span></td>
               <td className="px-4 text-right font-medium tabular-nums">{formatINR(pinnedRow.netWorth)}</td>

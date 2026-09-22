@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Timer as TimerIcon, Zap } from "lucide-react";
 import { BrandMark } from "@/components/shell/brand";
 import { useRoundClock } from "@/components/market/round-clock";
 import { formatPct, formatPrice } from "@/lib/domain/money";
@@ -59,28 +60,32 @@ export function ProjectorStage({ state, joinUrl, preview = false, override = nul
 
   return (
     <div data-theme={theme} className="relative flex h-full w-full flex-col overflow-hidden bg-canvas text-fg-primary" aria-label={`Projector: ${takeover ? "takeover" : SCENE_LABEL[scene]}`}>
-      <header className="flex h-[88px] shrink-0 items-center justify-between border-b-2 border-border px-12">
+      <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-border px-12">
         <div className="flex items-center gap-4">
-          <BrandMark className="size-11 rounded-lg [&_svg]:size-6" />
-          <div>
-            <p className="text-[26px] leading-tight font-semibold tracking-tight text-fg-primary">{state.event.name}</p>
-            <p className="font-mono text-[15px] tracking-[0.12em] text-fg-muted">JOIN · {state.event.code}</p>
-          </div>
+          <BrandMark className="size-12 rounded-lg [&_svg]:size-6" />
+          <p className="text-[20px] font-medium tracking-[0.08em] text-fg-secondary uppercase">{state.event.name}</p>
         </div>
-        <div className="flex items-center gap-8">
-          {marketState !== "NOT_STARTED" && marketState !== "COMPLETED" && (
-            <>
-              <div className="text-right">
-                <p className="text-[15px] tracking-[0.16em] text-fg-muted uppercase">{roundLabel(state, round)}</p>
-                <p className="text-[24px] leading-tight font-semibold text-fg-primary">{round?.name ?? "Between rounds"}</p>
-              </div>
-              <p className={cn("w-[190px] text-right font-mono text-[48px] leading-none font-semibold tabular-nums", !active ? "text-fg-muted" : round?.status === "RUNNING" && remaining <= 60_000 ? "text-warning" : "text-fg-primary")}>{active ? formatDuration(remaining) : "--:--"}</p>
-            </>
-          )}
-          <span className={cn("flex items-center gap-2.5 rounded-lg border-2 px-4 py-2 text-[20px] font-semibold", warning ? "border-warning/60 bg-warning/10 text-warning" : marketState === "OPEN" ? "border-accent/50 bg-accent/10 text-fg-primary" : "border-border-strong text-fg-secondary")}>
-            <span className={cn("size-3 rounded-full", marketState === "OPEN" ? "animate-pulse-dot bg-accent" : warning ? "bg-warning" : "bg-fg-muted")} />
+        <div className="flex items-center gap-7">
+          <span
+            className={cn(
+              "flex items-center gap-2.5 rounded-md px-4 py-2 text-[20px] font-semibold tracking-[0.06em] uppercase",
+              warning ? "bg-warning text-warning-fg" : marketState === "OPEN" ? "bg-accent text-accent-fg" : "border-2 border-border-strong text-fg-secondary",
+            )}
+          >
+            <span className={cn("size-2.5 rounded-full bg-current", marketState === "OPEN" && "animate-pulse-dot")} />
             {MARKET_STATE_LABEL[marketState]}
           </span>
+          {marketState !== "NOT_STARTED" && marketState !== "COMPLETED" && (
+            <>
+              <p className="text-[20px] font-semibold tracking-[0.06em] text-fg-primary uppercase">
+                {round ? `${roundLabel(state, round)} · ${round.name}` : "Between rounds"}
+              </p>
+              <p className="flex items-center gap-3" role="timer" aria-label="Time left in the round">
+                <TimerIcon className="size-8 text-fg-muted" aria-hidden />
+                <span className={cn("font-mono text-[56px] leading-none font-medium tabular-nums", !active ? "text-fg-muted" : round?.status === "RUNNING" && remaining <= 60_000 ? "text-warning" : "text-fg-primary")}>{active ? formatDuration(remaining) : "--:--"}</span>
+              </p>
+            </>
+          )}
         </div>
       </header>
 
@@ -96,7 +101,7 @@ export function ProjectorStage({ state, joinUrl, preview = false, override = nul
       </main>
 
       {state.event.projector.tickerEnabled && <TickerStrip state={state} label={marketState === "COMPLETED" ? "Final" : marketState === "NOT_STARTED" ? "Prices" : "Live"} />}
-      {takeover && <Takeover state={state} takeover={takeover} />}
+      {takeover && <Takeover state={state} takeover={takeover} ticker={state.event.projector.tickerEnabled} nextLabel={SCENE_LABEL[scene]} />}
       {preview && (
         <span className="absolute top-3 right-3 rounded-md bg-surface-raised/90 px-3 py-1.5 text-[18px] text-fg-secondary">
           Preview · {takeover ? (takeover.kind === "NEWS" ? "Breaking news" : "Message") : SCENE_LABEL[scene]} · {formatClock(now, true)}
@@ -137,10 +142,12 @@ function TickerStrip({ state, label }: { state: EventState; label: string }) {
   );
 }
 
-function Takeover({ state, takeover }: { state: EventState; takeover: ActiveTakeover }) {
+/** Takeovers sit between the header and the ticker, so the round clock and trading state stay visible (C4). */
+function Takeover({ state, takeover, ticker, nextLabel }: { state: EventState; takeover: ActiveTakeover; ticker: boolean; nextLabel: string }) {
+  const inset = cn("absolute inset-x-0 top-[88px] z-20 flex animate-takeover-in flex-col bg-canvas", ticker ? "bottom-[56px]" : "bottom-0");
   if (takeover.kind === "MESSAGE") {
     return (
-      <div role="status" aria-live="polite" className="absolute inset-0 z-20 flex animate-takeover-in flex-col bg-canvas">
+      <div role="status" aria-live="polite" className={inset}>
         <div className="flex h-[64px] shrink-0 items-center justify-between bg-accent-strong px-12 text-white">
           <span className="text-[26px] font-bold tracking-[0.16em] uppercase">Announcement</span>
           <span className="font-mono text-[22px]">{state.event.name}</span>
@@ -155,39 +162,43 @@ function Takeover({ state, takeover }: { state: EventState; takeover: ActiveTake
   const { release } = takeover;
   const impacts = release.impacts.slice(0, 4);
   const releaseRound = state.rounds.find((r) => r.id === release.roundId);
+  const item = state.news.find((n) => n.id === release.newsItemId);
   return (
-    <div role="alert" aria-live="assertive" className="absolute inset-0 z-20 flex animate-takeover-in flex-col bg-canvas">
-      <div className="flex h-[76px] shrink-0 items-center justify-between bg-warning px-12 text-warning-fg">
-        <span className="flex items-center gap-4 text-[34px] leading-none font-black tracking-[0.14em] uppercase">
-          <span className="size-5 animate-pulse-dot rounded-full bg-warning-fg" />
+    <div role="alert" aria-live="assertive" className={inset}>
+      <div className="flex h-[80px] shrink-0 items-center justify-between bg-warning px-12 text-warning-fg">
+        <span className="flex items-center gap-4 text-[34px] leading-none font-bold tracking-[-0.01em] uppercase">
+          <Zap className="size-9" aria-hidden />
           Breaking news
         </span>
-        <span className="font-mono text-[26px] font-semibold">{formatClock(release.releasedAt, true)}</span>
+        <span className="text-[24px] font-medium">
+          {item ? `News #${item.number} · ` : ""}
+          {formatClock(release.releasedAt)}
+          {releaseRound ? ` · ${roundLabel(state, releaseRound)}` : ""}
+        </span>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[1.3fr_1fr] items-center gap-14 px-14 py-12">
-        <div className="flex min-h-0 flex-col">
-          <p className="text-[20px] font-semibold tracking-[0.16em] text-warning uppercase">{releaseRound ? `${roundLabel(state, releaseRound)} · ${releaseRound.name}` : state.event.name}</p>
-          <p className="mt-4 line-clamp-4 text-[72px] leading-[1.05] font-semibold tracking-tight text-fg-primary">{release.headline}</p>
-          {release.body && <p className="mt-7 line-clamp-4 border-l-4 border-warning/60 pl-6 text-[30px] leading-snug text-fg-secondary">{release.body}</p>}
-        </div>
-        <div className="flex min-h-0 flex-col">
-          <p className="mb-4 text-[18px] font-semibold tracking-[0.16em] text-fg-muted uppercase">{impacts.length ? "Price reaction" : "Market impact"}</p>
+      <div className="flex min-h-0 flex-1 flex-col px-12 pt-14 pb-8">
+        <p className="line-clamp-3 max-w-[1700px] text-[88px] leading-[1.08] font-semibold tracking-[-0.02em] text-fg-primary">{release.headline}</p>
+        {release.body && <p className="mt-7 line-clamp-2 max-w-[1500px] text-[30px] leading-snug text-fg-secondary">{release.body}</p>}
+        <div className="mt-10 flex flex-wrap gap-5">
           {impacts.length === 0 ? (
-            <p className="rounded-2xl border-2 border-border bg-surface px-8 py-7 text-[28px] text-fg-secondary">No direct price impact</p>
+            <p className="rounded-xl bg-surface px-7 py-5 text-[28px] text-fg-secondary">No direct price impact</p>
           ) : (
-            <div className="flex flex-col gap-4">
-              {impacts.map((impact) => (
-                <div key={impact.instrumentId} className="rounded-2xl border-2 border-border-strong bg-surface px-8 py-6">
-                  <ProjectorImpactRow state={state} impact={impact} size={impacts.length <= 2 ? "lg" : "md"} />
-                  {impact.clamped && <p className="mt-2 text-[18px] text-warning">Price limit applied</p>}
-                </div>
-              ))}
-            </div>
+            impacts.map((impact) => (
+              <div key={impact.instrumentId} className="rounded-xl bg-surface px-7 py-5">
+                <ProjectorImpactRow state={state} impact={impact} size="chip" />
+                {impact.clamped && <p className="mt-1.5 text-[18px] text-warning">Price limit applied</p>}
+              </div>
+            ))
           )}
         </div>
-      </div>
-      <div className="h-2 shrink-0 bg-surface-hover">
-        <TakeoverProgress key={release.id + takeover.takeover.startedAt} remainingMs={takeover.remainingMs} totalMs={(takeover.takeover.durationSeconds ?? 12) * 1000} />
+        <div className="mt-auto flex items-center gap-6">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-hover">
+            <TakeoverProgress key={release.id + takeover.takeover.startedAt} remainingMs={takeover.remainingMs} totalMs={(takeover.takeover.durationSeconds ?? 12) * 1000} />
+          </div>
+          <span className="text-[22px] text-fg-muted">
+            back to {nextLabel} in {Math.max(0, Math.ceil(takeover.remainingMs / 1000))} s
+          </span>
+        </div>
       </div>
     </div>
   );

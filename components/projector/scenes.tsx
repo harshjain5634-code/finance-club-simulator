@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Megaphone, Snowflake } from "lucide-react";
 import { BrandMark } from "@/components/shell/brand";
 import { Sparkline } from "@/components/ui/sparkline";
-import { projectorLeaderboardRows, publishedLeaderboard } from "@/lib/domain/leaderboard";
+import { projectorLeaderboardRows, publishedLeaderboard, sharedRanks } from "@/lib/domain/leaderboard";
 import { nextPendingRound } from "@/lib/domain/lifecycle";
 import { formatINR, formatPct, formatPrice } from "@/lib/domain/money";
 import { MARKET_STATE_LABEL } from "@/lib/domain/trading-gate";
@@ -142,11 +142,12 @@ export function RoundStatusScene({ state, marketState, remaining, elapsedPct, no
 export function LeaderboardScene({ state }: { state: EventState }) {
   const published = publishedLeaderboard(state);
   const rows = projectorLeaderboardRows(published.rows, state.event.leaderboard.projectorVisibility, state.event.leaderboard.projectorTopN) ?? [];
+  const ranks = sharedRanks(published.rows);
   const twoColumns = rows.length > 12;
   const perColumn = twoColumns ? Math.ceil(rows.length / 2) : Math.max(1, rows.length);
   const rowHeight = Math.max(34, Math.min(64, Math.floor(LIST_HEIGHT / perColumn)));
   const columns = twoColumns ? [rows.slice(0, perColumn), rows.slice(perColumn)] : [rows];
-  const grid = twoColumns ? "grid-cols-[76px_52px_1fr_160px_200px]" : "grid-cols-[96px_72px_1fr_220px_280px]";
+  const grid = twoColumns ? "grid-cols-[76px_52px_1fr_200px_150px]" : "grid-cols-[88px_80px_1fr_300px_190px]";
   return (
     <div className="flex h-full flex-col">
       <SceneTitle
@@ -172,12 +173,12 @@ export function LeaderboardScene({ state }: { state: EventState }) {
                 <span className="pl-2">Rank</span>
                 <span />
                 <span>Team</span>
-                <span className="text-right">Return</span>
                 <span className="text-right">Net worth</span>
+                <span className="text-right">Return</span>
               </div>
               <ol>
                 {column.map((row) => (
-                  <LeaderRow key={row.teamId} row={row} height={rowHeight} grid={grid} />
+                  <LeaderRow key={row.teamId} row={row} label={ranks[row.teamId]?.label.replace("#", "") ?? String(row.rank)} height={rowHeight} grid={grid} podium={!twoColumns && row.rank <= 3} />
                 ))}
               </ol>
             </div>
@@ -188,12 +189,13 @@ export function LeaderboardScene({ state }: { state: EventState }) {
   );
 }
 
-function LeaderRow({ row, height, grid }: { row: LeaderboardRow; height: number; grid: string }) {
+function LeaderRow({ row, label, height, grid, podium }: { row: LeaderboardRow; label: string; height: number; grid: string; podium: boolean }) {
   const compact = height < 48;
+  const big = podium && !compact;
   return (
-    <li className={cn("grid items-center gap-x-5 border-b border-border", grid, row.rank <= 3 && "bg-surface/70")} style={{ height }}>
-      <span className={cn("pl-2 font-mono font-bold tabular-nums", compact ? "text-[22px]" : "text-[28px]", row.rank === 1 ? "text-accent-text" : "text-fg-primary")}>#{row.rank}</span>
-      <span className={cn("flex items-center gap-1 font-semibold tabular-nums", compact ? "text-[16px]" : "text-[20px]", row.movement > 0 ? "text-positive" : row.movement < 0 ? "text-negative" : "text-fg-muted")}>
+    <li className={cn("grid items-center gap-x-5", grid, podium ? "mb-1.5 rounded-lg bg-surface" : "border-b border-border")} style={{ height: big ? Math.min(76, height + 10) : height }}>
+      <span className={cn("pl-5 font-mono tabular-nums", big ? "text-[34px]" : compact ? "text-[22px]" : "text-[26px]", row.rank === 1 ? "font-semibold text-accent-text" : "text-fg-primary")}>{label}</span>
+      <span className={cn("flex items-center gap-1 tabular-nums", compact ? "text-[16px]" : "text-[20px]", row.movement !== 0 ? "text-fg-secondary" : "text-fg-muted")}>
         {row.movement === 0 ? (
           "—"
         ) : (
@@ -203,9 +205,14 @@ function LeaderRow({ row, height, grid }: { row: LeaderboardRow; height: number;
           </>
         )}
       </span>
-      <span className={cn("truncate font-semibold text-fg-primary", compact ? "text-[22px]" : "text-[28px]")}>{row.teamName}</span>
-      <span className={cn("text-right font-mono font-semibold tabular-nums", compact ? "text-[22px]" : "text-[28px]", tone(row.returnPct))}>{formatPct(row.returnPct)}</span>
-      <span className={cn("text-right font-mono text-fg-secondary tabular-nums", compact ? "text-[18px]" : "text-[22px]")}>{formatINR(row.netWorth, 0)}</span>
+      <span className={cn("truncate text-fg-primary", big ? "text-[40px] font-semibold tracking-[-0.01em]" : compact ? "text-[22px]" : "text-[28px]")}>{row.teamName}</span>
+      <span className={cn("text-right font-mono tabular-nums text-fg-primary", big ? "text-[40px] font-medium" : compact ? "text-[20px]" : "text-[26px]")}>{formatINR(row.netWorth, 0)}</span>
+      <span className="flex justify-end pr-5">
+        <span className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono tabular-nums", compact ? "text-[18px]" : "text-[20px]", row.returnPct > 0.004 ? "bg-positive/15 text-positive" : row.returnPct < -0.004 ? "bg-negative/15 text-negative" : "bg-surface-hover text-fg-secondary")}>
+          <Arrow value={row.returnPct} className="size-3" />
+          {formatPct(Math.abs(row.returnPct), { signed: false })}
+        </span>
+      </span>
     </li>
   );
 }
@@ -364,8 +371,22 @@ function NewsListItem({ state, release, now }: { state: EventState; release: New
   );
 }
 
-export function ProjectorImpactRow({ state, impact, size = "md" }: { state: EventState; impact: ResolvedImpact; size?: "md" | "lg" }) {
+export function ProjectorImpactRow({ state, impact, size = "md" }: { state: EventState; impact: ResolvedImpact; size?: "md" | "lg" | "chip" }) {
   const symbol = instrumentOf(state, impact.instrumentId)?.symbol;
+  if (size === "chip") {
+    return (
+      <div className="flex items-center gap-6 font-mono text-[36px] tabular-nums">
+        <span className="font-sans font-semibold text-fg-primary">{symbol}</span>
+        <span className="text-fg-primary">₹{formatPrice(impact.previousPrice)}</span>
+        <span className="text-fg-muted">→</span>
+        <span className="font-medium text-fg-primary">₹{formatPrice(impact.newPrice)}</span>
+        <span className={cn("flex items-center gap-2 rounded-md px-3 py-1 text-[24px] font-semibold", impact.appliedPct >= 0 ? "bg-positive/15 text-positive" : "bg-negative/15 text-negative")}>
+          <Arrow value={impact.appliedPct} className="size-4" />
+          {formatPct(Math.abs(impact.appliedPct), { signed: false })}
+        </span>
+      </div>
+    );
+  }
   const pct = <span className={cn("shrink-0 rounded-lg px-3 py-1 font-mono font-bold", size === "lg" ? "text-[32px]" : "text-[24px]", impact.appliedPct >= 0 ? "bg-positive/15 text-positive" : "bg-negative/15 text-negative")}>{formatPct(impact.appliedPct)}</span>;
   const prices = (
     <span className={cn("font-mono whitespace-nowrap text-fg-secondary", size === "lg" ? "text-[28px]" : "text-[22px]")}>
@@ -411,6 +432,8 @@ export function MessageScene({ title, body, eventName, tone: messageTone = "defa
 
 export function FinalResultsScene({ state }: { state: EventState }) {
   const rows = publishedLeaderboard(state).rows;
+  const ranks = sharedRanks(rows);
+  const label = (row: LeaderboardRow) => ranks[row.teamId]?.label.replace("#", "") ?? String(row.rank);
   const podium = [rows[1], rows[0], rows[2]];
   const heights = ["h-[230px]", "h-[300px]", "h-[180px]"];
   return (
@@ -425,7 +448,7 @@ export function FinalResultsScene({ state }: { state: EventState }) {
                 <p className={cn("mt-1 font-mono text-[28px] font-semibold tabular-nums", tone(row.returnPct))}>{formatPct(row.returnPct)}</p>
                 <p className="font-mono text-[18px] text-fg-muted tabular-nums">{formatINR(row.netWorth, 0)}</p>
                 <div className={cn("mt-4 flex w-full items-start justify-center rounded-t-2xl border-2 border-b-0 pt-5", heights[index], row.rank === 1 ? "border-accent/60 bg-accent/15" : "border-border-strong bg-surface")}>
-                  <span className={cn("font-mono text-[72px] leading-none font-bold", row.rank === 1 ? "text-accent-text" : "text-fg-secondary")}>{row.rank}</span>
+                  <span className={cn("font-mono text-[72px] leading-none font-bold", row.rank === 1 ? "text-accent-text" : "text-fg-secondary")}>{label(row)}</span>
                 </div>
               </div>
             ) : (
@@ -436,7 +459,7 @@ export function FinalResultsScene({ state }: { state: EventState }) {
         <ol className="flex flex-col justify-center">
           {rows.slice(3, 14).map((row) => (
             <li key={row.teamId} className="grid h-[54px] grid-cols-[80px_1fr_180px] items-center gap-5 border-b border-border">
-              <span className="font-mono text-[24px] font-bold text-fg-muted">#{row.rank}</span>
+              <span className="font-mono text-[24px] font-bold text-fg-muted">{label(row)}</span>
               <span className="truncate text-[24px] font-medium text-fg-primary">{row.teamName}</span>
               <span className={cn("text-right font-mono text-[24px] font-semibold tabular-nums", tone(row.returnPct))}>{formatPct(row.returnPct)}</span>
             </li>
