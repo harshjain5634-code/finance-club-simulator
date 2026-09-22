@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Coins, Eye, EyeOff, KeyRound, Layers, Plus, Printer, RotateCcw, UserCheck, UserPlus, UserX } from "lucide-react";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, ChevronRight, Coins, Flag, KeyRound, Layers, Plus, Printer, RotateCcw, Search, UserCheck, UserX, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog";
-import { DataTable } from "@/components/ui/data-table";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Delta } from "@/components/ui/delta";
 import { Field, Input, Textarea } from "@/components/ui/field";
@@ -19,172 +18,345 @@ import { Select } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TeamStatusBadge } from "@/components/market/status";
 import { AdjustmentsTable, HoldingsTable, LedgerTable, TradesTable } from "@/components/market/tables";
-import { computeLeaderboard } from "@/lib/domain/leaderboard";
+import { computeLeaderboard, sharedRanks } from "@/lib/domain/leaderboard";
+import { monitorProposal } from "@/lib/domain/monitoring";
 import { formatINR, formatPct, formatPrice } from "@/lib/domain/money";
 import { teamCash, teamShares } from "@/lib/domain/portfolio";
 import type { AdjustmentType, EventState, Team } from "@/lib/domain/types";
 import { addTeams, adjustTeamCash, adjustTeamHolding, regenerateTeamPin, resetTeam, setTeamStatus, updateTeam } from "@/lib/mock/commands";
+import { formatClock, formatQuantity } from "@/lib/format";
 import { useNow } from "@/lib/mock/hooks";
 import { useOnlineTeams } from "@/lib/mock/runtime";
-import { ledgerForTeam, teamSummary, tradesForTeam } from "@/lib/mock/selectors";
+import { ledgerForTeam, symbolOf, teamSummary, tradesForTeam } from "@/lib/mock/selectors";
 import { cn } from "@/lib/utils";
 import { hostAction, hostBase, useHostEvent } from "./host-context";
 
-type TeamRow = { team: Team; cash: number; netWorth: number; returnPct: number; rank: number | null; capitalBase: number };
+type TeamRow = { team: Team; cash: number; netWorth: number; returnPct: number; rank: number | null; rankLabel: string; capitalBase: number; open: number };
 
+/**
+ * C4 Host Teams (section 16, frame 107:7127): the roster with presence, rank, money and open proposals, and a side
+ * panel for the selected team. Every change to money or holdings needs a reason, a confirmation, and lands in the
+ * ledger and audit log. Disqualify is intentionally not offered (deferred; not supported by the current engine).
+ */
 export function TeamsScreen() {
   const { state, eventId } = useHostEvent();
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   const online = useOnlineTeams(eventId);
-  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
-  const [statusTarget, setStatusTarget] = useState<Team | null>(null);
-  const [pinTarget, setPinTarget] = useState<Team | null>(null);
   const [capitalTarget, setCapitalTarget] = useState<Team | null>(null);
 
   const rows: TeamRow[] = useMemo(() => {
     const board = computeLeaderboard(state);
+    const ranks = sharedRanks(board);
     return state.teams.map((team) => {
       const summary = teamSummary(state, team.id)!;
-      return { team, cash: summary.cash, netWorth: summary.netWorth, returnPct: summary.returnPct, capitalBase: summary.capitalBase, rank: board.find((r) => r.teamId === team.id)?.rank ?? null };
+      const open = state.proposals.filter((p) => (p.proposerTeamId === team.id || p.counterpartyTeamId === team.id) && (p.status === "PROPOSED" || p.status === "PENDING_APPROVAL")).length;
+      const row = board.find((r) => r.teamId === team.id);
+      return { team, cash: summary.cash, netWorth: summary.netWorth, returnPct: summary.returnPct, capitalBase: summary.capitalBase, rank: row?.rank ?? null, rankLabel: ranks[team.id]?.label ?? (row ? `#${row.rank}` : "—"), open };
     });
   }, [state]);
-
-  const toggleReveal = (teamId: string) =>
-    setRevealed((current) => {
-      const next = new Set(current);
-      if (next.has(teamId)) next.delete(teamId);
-      else next.add(teamId);
-      return next;
-    });
+  const q = query.trim().toLowerCase();
+  const visible = rows.filter((r) => !q || `${r.team.name} ${r.team.loginCode}`.toLowerCase().includes(q)).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999) || a.team.order - b.team.order);
+  const selectedId = params.get("team");
+  const selected = rows.find((r) => r.team.id === selectedId) ?? null;
+  const select = (id: string | null) => router.replace(id ? `${pathname}?team=${id}` : pathname, { scroll: false });
+  const disabled = state.teams.filter((t) => t.status !== "ACTIVE").length;
 
   return (
-    <div className="flex flex-col gap-3">
-      <PageHeader
-        title="Teams"
-        description={`${state.teams.length} teams · capital rule: ${state.event.capitalRule === "SAME" ? `same for all (${formatINR(state.event.defaultStartingCash, 0)} cash)` : "custom per team"}`}
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => setPrintOpen(true)}>
-              <Printer className="size-3.5" />
-              Print credentials
+    <div className={cn("grid grid-cols-1 gap-4 xl:h-[calc(100dvh-112px-32px-32px)]", selected && "xl:grid-cols-[minmax(0,1fr)_420px]")}>
+      <Card className="flex min-h-0 flex-col overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3.5">
+          <h1 className="text-h2 font-semibold text-fg-primary">Teams</h1>
+          <span className="text-caption text-fg-muted">
+            {state.teams.length} teams · {online.size} online · {disabled} disabled
+          </span>
+          <span className="ml-auto flex flex-wrap items-center gap-2">
+            <label className="relative w-52">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Find a team"
+                aria-label="Find a team"
+                className="h-(--control-h) w-full rounded-md border border-border bg-surface pr-3 pl-9 text-[14px] text-fg-primary outline-none placeholder:text-fg-muted focus:border-accent"
+              />
+            </label>
+            <Button variant="ghost" size="sm" onClick={() => setPrintOpen(true)}>
+              <Printer className="size-4" /> Credentials
             </Button>
-            <Button variant="primary" onClick={() => setAddOpen(true)} disabled={state.event.status === "COMPLETED"}>
-              <UserPlus className="size-3.5" />
-              Add teams
+            <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)} disabled={state.event.status === "COMPLETED"}>
+              <Plus className="size-4" /> Add team
             </Button>
-          </>
-        }
-      />
-      <Card>
-        <DataTable<TeamRow>
-          rows={rows}
-          rowKey={(r) => r.team.id}
-          onRowClick={(r) => router.push(`${hostBase(eventId)}/teams/${r.team.id}`)}
-          rowLabel={(r) => `Open ${r.team.name}`}
-          initialSort={{ key: "team", direction: "asc" }}
-          minWidth={1180}
-          columns={[
-            {
-              key: "team",
-              header: "Team",
-              sticky: true,
-              sortValue: (r) => r.team.order,
-              cell: (r) => (
-                <span className="flex items-center gap-2.5">
-                  <Avatar name={r.team.name} size="sm" />
-                  <span className="font-medium text-fg-primary">{r.team.name}</span>
-                </span>
-              ),
-            },
-            { key: "code", header: "Login code", sortValue: (r) => r.team.loginCode, cell: (r) => <span className="font-mono text-xs">{r.team.loginCode}</span> },
-            {
-              key: "pin",
-              header: "PIN",
-              cell: (r) => (
-                <span className="flex items-center gap-1">
-                  <span className="w-10 font-mono text-xs tabular-nums">{revealed.has(r.team.id) ? r.team.pin : "••••"}</span>
-                  <Button variant="ghost" size="icon-sm" aria-label={revealed.has(r.team.id) ? `Hide PIN for ${r.team.name}` : `Reveal PIN for ${r.team.name}`} onClick={(e) => { e.stopPropagation(); toggleReveal(r.team.id); }}>
-                    {revealed.has(r.team.id) ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                  </Button>
-                  <Button variant="ghost" size="icon-sm" aria-label={`Regenerate PIN for ${r.team.name}`} onClick={(e) => { e.stopPropagation(); setPinTarget(r.team); }}>
-                    <KeyRound className="size-3.5" />
-                  </Button>
-                </span>
-              ),
-            },
-            {
-              key: "capital",
-              header: "Starting capital",
-              align: "right",
-              sortValue: (r) => r.capitalBase,
-              cell: (r) => (
-                <span className="inline-flex items-center gap-1.5">
-                  {formatINR(state.event.allocationsApplied ? r.capitalBase : r.team.startingCash, 0)}
-                  {state.event.capitalRule === "CUSTOM" && !state.event.allocationsApplied && (
-                    <Button variant="ghost" size="xs" onClick={(e) => { e.stopPropagation(); setCapitalTarget(r.team); }}>
-                      Edit
-                    </Button>
+          </span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto">
+          <table className="w-full min-w-[820px] border-collapse">
+            <caption className="sr-only">Teams</caption>
+            <thead className="sticky top-0 z-[1] bg-surface">
+              <tr className="h-9 border-b border-border text-caption text-fg-muted">
+                <th scope="col" className="pl-5 text-left font-medium">Team</th>
+                <th scope="col" className="px-3 text-left font-medium">Status</th>
+                <th scope="col" className="px-3 text-right font-medium">Rank</th>
+                <th scope="col" className="px-3 text-right font-medium">Net worth</th>
+                <th scope="col" className="px-3 text-right font-medium">Return</th>
+                <th scope="col" className="px-3 text-right font-medium">Cash</th>
+                <th scope="col" className="px-3 text-right font-medium">Open</th>
+                <th scope="col" className="pr-5 pl-3 text-right font-medium">Starting capital</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-5 py-12 text-center text-meta text-fg-secondary">
+                    {state.teams.length === 0 ? "No teams yet. Add teams to hand out login codes." : "No team matches."}
+                  </td>
+                </tr>
+              )}
+              {visible.map((r) => (
+                <tr
+                  key={r.team.id}
+                  tabIndex={0}
+                  onClick={() => select(r.team.id)}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), select(r.team.id))}
+                  aria-selected={selected?.team.id === r.team.id}
+                  className={cn(
+                    "h-(--row-h) cursor-pointer border-b border-border-subtle hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none",
+                    selected?.team.id === r.team.id && "bg-accent-soft/50 shadow-[inset_2px_0_0_var(--color-accent)]",
                   )}
-                </span>
-              ),
-            },
-            { key: "cash", header: "Cash", align: "right", sortValue: (r) => r.cash, cell: (r) => formatINR(r.cash) },
-            { key: "worth", header: "Net worth", align: "right", sortValue: (r) => r.netWorth, cell: (r) => <span className="font-medium text-fg-primary">{formatINR(r.netWorth)}</span> },
-            { key: "return", header: "Return", align: "right", sortValue: (r) => r.returnPct, cell: (r) => <Delta value={r.returnPct} variant="pill" /> },
-            { key: "rank", header: "Rank", align: "right", sortValue: (r) => r.rank ?? 999, cell: (r) => (r.rank ? `#${r.rank}` : "—") },
-            { key: "status", header: "Status", sortValue: (r) => r.team.status, cell: (r) => <TeamStatusBadge status={r.team.status} /> },
-            {
-              key: "online",
-              header: "Online",
-              sortValue: (r) => Number(online.has(r.team.id)),
-              cell: (r) => (
-                <span className="inline-flex items-center gap-1.5 text-xs text-fg-secondary">
-                  <span className={cn("size-2 rounded-full", online.has(r.team.id) ? "bg-accent" : "bg-border-strong")} aria-hidden />
-                  {online.has(r.team.id) ? "Online" : "Offline"}
-                </span>
-              ),
-            },
-            {
-              key: "actions",
-              header: "",
-              align: "right",
-              cell: (r) => (
-                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setStatusTarget(r.team); }}>
-                  {r.team.status === "ACTIVE" ? <UserX className="size-3.5" /> : <UserCheck className="size-3.5" />}
-                  {r.team.status === "ACTIVE" ? "Disable" : "Enable"}
-                </Button>
-              ),
-            },
-          ]}
-        />
+                >
+                  <td className="pl-5">
+                    <span className="flex items-center gap-2.5">
+                      <Avatar name={r.team.name} size="sm" tone="accent" />
+                      <span className="text-[14px] font-medium text-fg-primary">{r.team.name}</span>
+                    </span>
+                  </td>
+                  <td className="px-3">
+                    <PresenceBadge team={r.team} online={online.has(r.team.id)} />
+                  </td>
+                  <td className="px-3 text-right font-mono text-[13px] text-fg-primary">{r.rankLabel}</td>
+                  <td className="px-3 text-right font-mono text-[13px] text-fg-primary">{formatINR(r.netWorth, 0)}</td>
+                  <td className="px-3 text-right">
+                    <Delta value={r.returnPct} showArrow className="font-mono text-[13px]" />
+                  </td>
+                  <td className="px-3 text-right font-mono text-[13px] text-fg-secondary">{formatINR(r.cash, 0)}</td>
+                  <td className={cn("px-3 text-right font-mono text-[13px]", r.open ? "text-fg-primary" : "text-fg-muted")}>{r.open}</td>
+                  <td className="pr-5 pl-3 text-right font-mono text-[13px] text-fg-secondary">
+                    {formatINR(state.event.allocationsApplied ? r.capitalBase : r.team.startingCash, 0)}
+                    {state.event.capitalRule === "CUSTOM" && !state.event.allocationsApplied && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="ml-1 font-sans"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCapitalTarget(r.team);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="shrink-0 border-t border-border px-5 py-2 text-caption text-fg-muted">&ldquo;Online&rdquo; means a team terminal is open (prototype presence in this browser).</p>
       </Card>
-      <p className="text-xs text-fg-muted">&ldquo;Online&rdquo; reflects team terminals open in this browser (prototype presence over BroadcastChannel).</p>
+
+      {selected && <TeamPanel key={selected.team.id} state={state} row={selected} online={online.has(selected.team.id)} onClose={() => select(null)} />}
 
       <AddTeamsDialog state={state} open={addOpen} onOpenChange={setAddOpen} />
       <CredentialsDialog state={state} open={printOpen} onOpenChange={setPrintOpen} />
-      <ConfirmActionDialog
-        open={statusTarget !== null}
-        onOpenChange={(open) => !open && setStatusTarget(null)}
-        tier="confirm"
-        tone={statusTarget?.status === "ACTIVE" ? "warning" : "accent"}
-        title={statusTarget?.status === "ACTIVE" ? `Disable ${statusTarget?.name}?` : `Enable ${statusTarget?.name}?`}
-        description={statusTarget?.status === "ACTIVE" ? "The team can no longer sign in, propose or accept trades. Its portfolio stays on the leaderboard." : "The team can sign in and trade again."}
-        confirmLabel={statusTarget?.status === "ACTIVE" ? "Disable team" : "Enable team"}
-        onConfirm={() => hostAction(setTeamStatus(eventId, statusTarget!.id, statusTarget!.status !== "ACTIVE"), (t) => `${t.name} ${t.status === "ACTIVE" ? "enabled" : "disabled"}`)}
-      />
-      <ConfirmActionDialog
-        open={pinTarget !== null}
-        onOpenChange={(open) => !open && setPinTarget(null)}
-        tier="confirm"
-        title={`Regenerate PIN for ${pinTarget?.name}?`}
-        description="The old PIN stops working for new sign-ins. Hand the new PIN to the team."
-        confirmLabel="Regenerate PIN"
-        onConfirm={() => hostAction(regenerateTeamPin(eventId, pinTarget!.id), (t) => `New PIN for ${t.name}: ${t.pin}`)}
-      />
       <CapitalDialog state={state} team={capitalTarget} onClose={() => setCapitalTarget(null)} />
     </div>
+  );
+}
+
+function PresenceBadge({ team, online }: { team: Team; online: boolean }) {
+  if (team.status !== "ACTIVE") return <Badge tone="warning">Trading disabled</Badge>;
+  return online ? (
+    <Badge tone="positive" dot>
+      Online
+    </Badge>
+  ) : (
+    <Badge tone="outline">Offline</Badge>
+  );
+}
+
+type PanelDialog = "pin" | "cash" | "holding" | "status" | "reset" | null;
+
+function TeamPanel({ state, row, online, onClose }: { state: EventState; row: TeamRow; online: boolean; onClose: () => void }) {
+  const eventId = state.event.id;
+  const [dialog, setDialog] = useState<PanelDialog>(null);
+  const [showPin, setShowPin] = useState(false);
+  const { team } = row;
+  const active = team.status === "ACTIVE";
+  const approvals = state.proposals.filter((p) => p.status === "PENDING_APPROVAL" && (p.proposerTeamId === team.id || p.counterpartyTeamId === team.id));
+  const flagged = state.proposals.filter((p) => (p.status === "PROPOSED" || p.status === "PENDING_APPROVAL") && (p.proposerTeamId === team.id || p.counterpartyTeamId === team.id) && monitorProposal(state, p).flags.length > 0);
+  const activity = [...state.audit].filter((a) => a.teamId === team.id || (a.actor.type === "TEAM" && a.actor.teamId === team.id)).slice(-6).reverse();
+  const summary = teamSummary(state, team.id)!;
+
+  const actions: { id: Exclude<PanelDialog, null>; icon: ReactNode; title: string; hint: string; tone?: "warning"; disabled?: boolean }[] = [
+    { id: "pin", icon: <KeyRound className="size-4" />, title: "Reset PIN…", hint: "Creates a new 4-digit PIN. Share it with the team privately." },
+    { id: "cash", icon: <Coins className="size-4" />, title: "Adjust cash…", hint: "Correction, award, penalty or capital change. Needs a reason; the team sees it." },
+    { id: "holding", icon: <Layers className="size-4" />, title: "Adjust holdings…", hint: "Add or remove shares. Needs a reason; recorded in the ledger." },
+    {
+      id: "status",
+      icon: active ? <UserX className="size-4" /> : <UserCheck className="size-4" />,
+      title: active ? "Disable trading…" : "Enable trading…",
+      hint: active ? "The team can't sign in or trade. Its portfolio stays in the standings. You can undo this." : "The team can sign in and trade again.",
+      tone: active ? "warning" : undefined,
+    },
+    { id: "reset", icon: <RotateCcw className="size-4" />, title: "Reset to opening portfolio…", hint: "Returns cash and shares to the starting allocation. Type the team name to confirm.", tone: "warning", disabled: !state.event.allocationsApplied },
+  ];
+
+  return (
+    <Card className="flex min-h-0 flex-col overflow-hidden">
+      <header className="flex items-start gap-3 border-b border-border px-5 py-4">
+        <Avatar name={team.name} tone="accent" />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-h2 font-semibold text-fg-primary">{team.name}</h2>
+          <p className="text-caption text-fg-muted">
+            {row.rankLabel === "—" ? "Not ranked" : `Rank ${row.rankLabel}`} · {active ? (online ? "online now" : "offline") : "trading disabled"} · <span className="font-mono">{team.loginCode}</span>
+          </p>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close team panel" className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg-primary">
+          <X className="size-4" />
+        </button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border">
+          {[
+            ["Net worth", <span key="n">{formatINR(row.netWorth, 0)}</span>],
+            ["Return", <Delta key="r" value={row.returnPct} showArrow className="font-mono" />],
+            ["Cash", <span key="c">{formatINR(row.cash, 0)}</span>],
+          ].map(([k, v]) => (
+            <div key={k as string} className="bg-surface-raised px-3 py-2.5">
+              <dt className="text-caption text-fg-muted">{k}</dt>
+              <dd className="mt-0.5 font-mono text-[14px] font-medium text-fg-primary">{v}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="mt-3 flex items-center gap-2 rounded-md bg-canvas-subtle px-3 py-2">
+          <KeyRound className="size-4 text-fg-muted" aria-hidden />
+          <span className="text-caption text-fg-secondary">PIN</span>
+          <span className="font-mono text-[14px] text-fg-primary">{showPin ? team.pin : "••••"}</span>
+          <button type="button" onClick={() => setShowPin((v) => !v)} className="ml-auto text-caption font-medium text-accent-text hover:underline">
+            {showPin ? "Hide" : "Reveal"}
+          </button>
+        </div>
+
+        {(approvals.length > 0 || flagged.length > 0) && (
+          <div className="mt-3 flex flex-col gap-2">
+            {[...new Set([...approvals, ...flagged])].map((p) => (
+              <div key={p.id} className="flex items-center gap-2.5 rounded-md border border-warning/40 bg-warning-soft px-3 py-2.5">
+                <Flag className="size-4 shrink-0 text-warning" aria-hidden />
+                <p className="min-w-0 flex-1 text-caption text-fg-primary">
+                  <span className="font-mono">{p.id}</span> {p.status === "PENDING_APPROVAL" ? "waits for your approval" : "is flagged"}: {formatQuantity(p.quantity)} {symbolOf(state)(p.instrumentId)} at ₹{formatPrice(p.price)}
+                </p>
+                <Link href={`${hostBase(eventId)}/trades?id=${p.id}`} className="text-caption font-medium text-accent-text hover:underline">
+                  Review
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <ul className="mt-4 divide-y divide-border overflow-hidden rounded-md border border-border">
+          {actions.map((a) => (
+            <li key={a.id}>
+              <button
+                type="button"
+                disabled={a.disabled}
+                onClick={() => setDialog(a.id)}
+                className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none disabled:opacity-50"
+              >
+                <span className={cn("mt-0.5", a.tone === "warning" ? "text-warning" : "text-fg-secondary")}>{a.icon}</span>
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block text-[14px] font-medium", a.tone === "warning" ? "text-warning" : "text-fg-primary")}>{a.title}</span>
+                  <span className="block text-caption text-fg-muted">{a.hint}</span>
+                </span>
+                <ChevronRight className="mt-0.5 size-4 text-fg-muted" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <section className="mt-5">
+          <div className="flex items-center justify-between">
+            <p className="eyebrow text-fg-muted">Recent activity</p>
+            <Link href={`${hostBase(eventId)}/teams/${team.id}`} className="text-caption font-medium text-accent-text hover:underline">
+              Holdings, ledger & trades
+            </Link>
+          </div>
+          {activity.length === 0 ? (
+            <p className="mt-2 text-meta text-fg-secondary">Nothing yet.</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {activity.map((a) => (
+                <li key={a.id} className="grid grid-cols-[64px_minmax(0,1fr)] gap-2 text-[13px]">
+                  <span className="font-mono text-caption text-fg-muted">{formatClock(a.at, true)}</span>
+                  <span className="text-fg-primary">{a.summary}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <CashAdjustmentDialog state={state} team={team} open={dialog === "cash"} onClose={() => setDialog(null)} />
+      <HoldingAdjustmentDialog state={state} team={team} open={dialog === "holding"} onClose={() => setDialog(null)} />
+      <ConfirmActionDialog
+        open={dialog === "pin"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        tier="confirm"
+        title={`Reset the PIN for ${team.name}?`}
+        description="The old PIN stops working for new sign-ins; devices already signed in stay signed in. Share the new PIN with the team privately."
+        confirmLabel="Create new PIN"
+        onConfirm={async () => {
+          const result = await hostAction(regenerateTeamPin(eventId, team.id), (t) => `New PIN for ${t.name} created`, "Reveal it in the team panel.");
+          if (result.ok) setShowPin(true);
+          return result;
+        }}
+      />
+      <ConfirmActionDialog
+        open={dialog === "status"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        tier="confirm"
+        tone={active ? "warning" : "accent"}
+        title={active ? `Disable trading for ${team.name}?` : `Enable ${team.name}?`}
+        description={active ? "The team can no longer sign in, propose or accept trades. Its portfolio stays in the standings. You can enable it again at any time." : "The team can sign in and trade again."}
+        confirmLabel={active ? "Disable trading" : "Enable team"}
+        onConfirm={() => hostAction(setTeamStatus(eventId, team.id, !active), (t) => `${t.name} ${t.status === "ACTIVE" ? "enabled" : "disabled"}`)}
+      />
+      <ConfirmActionDialog
+        open={dialog === "reset"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        tier="typed"
+        tone="warning"
+        title={`Reset ${team.name} to its opening portfolio?`}
+        description="Cash and holdings return to the starting allocation through a RESET journal, and the team's open proposals are cancelled. History is kept."
+        confirmLabel="Reset team"
+        typedPhrase={team.name}
+        onConfirm={({ reason, idempotencyKey }) => hostAction(resetTeam(eventId, team.id, reason, idempotencyKey), `${team.name} reset to starting allocation`)}
+      >
+        <KeyValueList
+          columns={2}
+          items={[
+            { label: "Current cash", value: formatINR(summary.cash) },
+            { label: "Cash after reset", value: formatINR(state.allocationPlan.applied[team.id]?.cash ?? 0) },
+            { label: "Current net worth", value: formatINR(summary.netWorth) },
+            { label: "Open proposals cancelled", value: row.open },
+          ]}
+        />
+      </ConfirmActionDialog>
+    </Card>
   );
 }
 
