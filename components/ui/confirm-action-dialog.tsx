@@ -156,12 +156,12 @@ function ConfirmBody({
               onChange={(event) => setTyped(event.target.value)}
               autoComplete="off"
               spellCheck={false}
-              className={cn("font-mono", typed && !typedOk && "border-warning/50")}
+              className={cn("font-mono", typed && !typedOk && "border-warning")}
             />
           </Field>
         )}
         {error && (
-          <p role="alert" className="rounded-md border border-warning/40 bg-warning/8 px-3 py-2 text-[13px] text-fg-primary">
+          <p role="alert" className="rounded-md bg-warning-soft px-3 py-2 text-[13px] text-fg-primary">
             {error}
           </p>
         )}

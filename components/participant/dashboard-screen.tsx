@@ -1,5 +1,6 @@
 "use client";
 
+import { MARKET_STATE_DISPLAY } from "@/components/market/status";
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeftRight, ArrowRight, Inbox } from "lucide-react";
@@ -16,7 +17,6 @@ import { ValueChart } from "@/components/market/value-chart";
 import { MoversList } from "@/components/market/widgets";
 import { effectiveParticipantVisibility, publishedLeaderboard } from "@/lib/domain/leaderboard";
 import { formatINR, formatPct, formatPrice } from "@/lib/domain/money";
-import { MARKET_STATE_LABEL } from "@/lib/domain/trading-gate";
 import type { MarketState } from "@/lib/domain/types";
 import { formatQuantity } from "@/lib/format";
 import { isBuyerFor, movers, netWorthSeries, proposalsForTeam, releasesNewestFirst, symbolOf, teamNameOf, teamSummary, tradesForTeam, type ChartRange } from "@/lib/mock/selectors";
@@ -60,7 +60,7 @@ export function DashboardScreen() {
         <div className="min-w-0 flex-1 basis-72">
           <p className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-fg-muted uppercase">
             <StateDot state={marketState} />
-            {MARKET_STATE_LABEL[marketState]}
+            {MARKET_STATE_DISPLAY[marketState]}
             {round && <span className="font-medium tracking-normal normal-case">· Round {round.number} of {roundsTotal}</span>}
           </p>
           <h1 className="mt-1 text-lg leading-6 font-semibold tracking-tight text-fg-primary">{round ? round.name : state.event.name}</h1>

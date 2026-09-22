@@ -1,7 +1,7 @@
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { MARKET_STATE_LABEL } from "@/lib/domain/trading-gate";
 import type {
   AdjustmentType,
+  NewsPriority,
   EventStatus,
   JournalType,
   MarketState,
@@ -13,32 +13,41 @@ import type {
 } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
 
-const marketTone: Record<MarketState, BadgeTone> = {
-  NOT_STARTED: "neutral",
-  BRIEFING: "accent",
-  OPEN: "accent",
-  PAUSED: "warning",
-  FROZEN: "warning",
-  BETWEEN_ROUNDS: "neutral",
-  COMPLETED: "neutral",
+/** C4 participant-facing labels for market state. */
+export const MARKET_STATE_DISPLAY: Record<MarketState, string> = {
+  NOT_STARTED: "Pre-event",
+  BRIEFING: "Briefing",
+  OPEN: "Trading open",
+  PAUSED: "Paused",
+  FROZEN: "Trading frozen",
+  BETWEEN_ROUNDS: "Between rounds",
+  COMPLETED: "Event completed",
 };
 
+const marketTone: Record<MarketState, string> = {
+  NOT_STARTED: "border border-border bg-surface-hover text-fg-secondary",
+  BRIEFING: "bg-accent-soft text-accent-text",
+  OPEN: "bg-accent text-accent-fg",
+  PAUSED: "bg-warning-soft text-warning",
+  FROZEN: "bg-warning text-warning-fg",
+  BETWEEN_ROUNDS: "border border-border bg-surface-hover text-fg-secondary",
+  COMPLETED: "border border-border bg-surface-hover text-fg-secondary",
+};
+
+/** C4 Status Badge for the market: solid accent = open, solid amber = frozen. Dot + text, never colour alone. */
 export function MarketStateBadge({ state, className, size = "sm" }: { state: MarketState; className?: string; size?: "sm" | "md" }) {
   const live = state === "OPEN";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-md border font-medium whitespace-nowrap",
-        size === "md" ? "h-8 px-2.5 text-xs" : "h-6 px-2 text-[11px]",
-        marketTone[state] === "warning" ? "border-warning/40 bg-warning/10 text-warning" : marketTone[state] === "accent" ? "border-accent/30 bg-accent/10 text-fg-primary" : "border-border bg-surface text-fg-secondary",
+        "inline-flex items-center gap-1.5 rounded-sm font-medium whitespace-nowrap",
+        size === "md" ? "h-7 px-2.5 text-[13px]" : "h-[22px] px-2 text-caption",
+        marketTone[state],
         className,
       )}
     >
-      <span className="relative flex size-2">
-        {live && <span className="absolute inset-0 animate-pulse-dot rounded-full bg-accent/60" />}
-        <span className={cn("relative size-2 rounded-full", live ? "bg-accent" : marketTone[state] === "warning" ? "bg-warning" : state === "BRIEFING" ? "bg-accent/70" : "bg-fg-muted")} />
-      </span>
-      {MARKET_STATE_LABEL[state]}
+      <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full bg-current", live && "animate-pulse-dot")} />
+      {MARKET_STATE_DISPLAY[state]}
     </span>
   );
 }
@@ -62,7 +71,7 @@ const proposalTone: Record<ProposalStatus, BadgeTone> = {
   PROPOSED: "accent",
   ACCEPTED: "accent",
   PENDING_APPROVAL: "warning",
-  SETTLED: "solid",
+  SETTLED: "neutral",
   REJECTED: "outline",
   REJECTED_BY_HOST: "warning",
   CANCELLED: "outline",
@@ -84,7 +93,7 @@ export function ProposalStatusBadge({ status }: { status: ProposalStatus }) {
   return <Badge tone={proposalTone[status]}>{proposalLabel[status]}</Badge>;
 }
 
-const newsTone: Record<NewsStatus, BadgeTone> = { DRAFT: "outline", READY: "accent", RELEASED: "solid", SKIPPED: "neutral" };
+const newsTone: Record<NewsStatus, BadgeTone> = { DRAFT: "outline", READY: "info", RELEASED: "neutral", SKIPPED: "outline" };
 export function NewsStatusBadge({ status }: { status: NewsStatus }) {
   return <Badge tone={newsTone[status]}>{status.charAt(0) + status.slice(1).toLowerCase()}</Badge>;
 }
@@ -124,8 +133,22 @@ export function PriceSourceBadge({ source }: { source: PriceEventSource }) {
 
 export function SideBadge({ buy }: { buy: boolean }) {
   return (
-    <Badge tone={buy ? "accent" : "outline"} className="w-10 justify-center">
+    <Badge tone="neutral" className="w-11 justify-center">
       {buy ? "Buy" : "Sell"}
+    </Badge>
+  );
+}
+
+/**
+ * Participant-facing news importance. Internal priorities stay LOW / NORMAL / HIGH.
+ * LOW → Update (quiet) · NORMAL → Important (toast) · HIGH → Breaking (interrupts).
+ */
+export const NEWS_PRIORITY_LABEL: Record<NewsPriority, string> = { LOW: "Update", NORMAL: "Important", HIGH: "Breaking" };
+const newsPriorityTone: Record<NewsPriority, BadgeTone> = { LOW: "neutral", NORMAL: "info", HIGH: "warning" };
+export function NewsPriorityBadge({ priority, className }: { priority: NewsPriority; className?: string }) {
+  return (
+    <Badge tone={newsPriorityTone[priority]} className={className}>
+      {NEWS_PRIORITY_LABEL[priority]}
     </Badge>
   );
 }

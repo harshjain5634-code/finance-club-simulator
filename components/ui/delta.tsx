@@ -20,9 +20,9 @@ const textTone: Record<Trend, string> = {
 };
 
 const pillTone: Record<Trend, string> = {
-  positive: "bg-positive/10 text-positive",
-  negative: "bg-negative/10 text-negative",
-  neutral: "bg-surface-hover text-fg-secondary",
+  positive: "bg-positive-soft text-positive",
+  negative: "bg-negative-soft text-negative",
+  neutral: "bg-canvas-subtle text-fg-muted",
 };
 
 function trendOf(value: number, format: DeltaProps["format"], decimals: number): Trend {
@@ -45,7 +45,7 @@ export function Delta({ value, format = "percent", decimals = 2, variant = "text
     <span
       className={cn(
         "inline-flex items-center gap-1 tabular-nums whitespace-nowrap",
-        variant === "pill" ? cn("h-5 rounded px-1.5 text-xs font-medium", pillTone[trend]) : textTone[trend],
+        variant === "pill" ? cn("h-5 rounded-xs px-1.5 font-mono text-caption font-medium", pillTone[trend]) : textTone[trend],
         className,
       )}
     >

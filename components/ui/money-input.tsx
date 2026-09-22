@@ -25,7 +25,7 @@ export function MoneyInput({ value, onValueChange, className, ...props }: MoneyI
 
   return (
     <div className={cn("relative", className)}>
-      <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-[13px] text-fg-muted">₹</span>
+      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[14px] text-fg-muted">₹</span>
       <input
         {...props}
         type="text"
@@ -40,7 +40,7 @@ export function MoneyInput({ value, onValueChange, className, ...props }: MoneyI
           setLastValue(parsed);
           onValueChange(parsed);
         }}
-        className={cn(inputClasses, "pl-6")}
+        className={cn(inputClasses, "pl-7 font-mono")}
       />
     </div>
   );

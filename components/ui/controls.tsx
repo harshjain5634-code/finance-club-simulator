@@ -25,9 +25,9 @@ export function Switch({
       onCheckedChange={onCheckedChange}
       disabled={disabled}
       aria-label={label}
-      className="relative h-5 w-9 shrink-0 rounded-full border border-border-strong bg-surface-hover transition-colors data-[state=checked]:border-accent-strong data-[state=checked]:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-45"
+      className="relative h-5 w-9 shrink-0 rounded-full border border-border-strong bg-canvas-subtle transition-colors data-[state=checked]:border-accent data-[state=checked]:bg-accent disabled:cursor-not-allowed disabled:opacity-45"
     >
-      <RadixSwitch.Thumb className="block size-3.5 translate-x-0.5 rounded-full bg-fg-secondary transition-transform data-[state=checked]:translate-x-[18px] data-[state=checked]:bg-white" />
+      <RadixSwitch.Thumb className="block size-3.5 translate-x-0.5 rounded-full bg-fg-muted shadow-sm transition-transform data-[state=checked]:translate-x-[18px] data-[state=checked]:bg-accent-fg" />
     </RadixSwitch.Root>
   );
 }
@@ -52,10 +52,10 @@ export function Checkbox({
       onCheckedChange={(value) => onCheckedChange(value === true)}
       disabled={disabled}
       aria-label={label}
-      className="grid size-4 shrink-0 place-items-center rounded border border-border-strong bg-canvas transition-colors data-[state=checked]:border-accent-strong data-[state=checked]:bg-accent-strong disabled:opacity-45"
+      className="grid size-4 shrink-0 place-items-center rounded-xs border border-border-strong bg-surface transition-colors data-[state=checked]:border-accent data-[state=checked]:bg-accent disabled:opacity-45"
     >
       <RadixCheckbox.Indicator>
-        <Check className="size-3 text-white" strokeWidth={3} />
+        <Check className="size-3 text-accent-fg" strokeWidth={3} />
       </RadixCheckbox.Indicator>
     </RadixCheckbox.Root>
   );
@@ -72,7 +72,7 @@ export function Tooltip({ content, children, side = "top" }: { content: ReactNod
           side={side}
           sideOffset={6}
           className={cn(
-            "z-[70] max-w-64 rounded-md border border-border-strong bg-surface-raised px-2.5 py-1.5 text-xs text-fg-primary shadow-lg shadow-black/40 animate-fade-in",
+            "z-[70] max-w-64 rounded-md border border-border bg-surface-raised px-2.5 py-1.5 text-caption text-fg-primary shadow-popover animate-fade-in",
           )}
         >
           {content}

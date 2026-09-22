@@ -5,10 +5,10 @@ import { dismissToast, useToasts, type ToastTone } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const toneIcon: Record<ToastTone, { icon: LucideIcon; className: string }> = {
-  success: { icon: CircleCheck, className: "text-accent-text" },
-  error: { icon: CircleAlert, className: "text-warning" },
-  warning: { icon: TriangleAlert, className: "text-warning" },
-  info: { icon: Info, className: "text-fg-secondary" },
+  success: { icon: CircleCheck, className: "bg-positive-soft text-positive" },
+  error: { icon: CircleAlert, className: "bg-negative-soft text-negative" },
+  warning: { icon: TriangleAlert, className: "bg-warning-soft text-warning" },
+  info: { icon: Info, className: "bg-info-soft text-info" },
 };
 
 export function Toaster() {
@@ -22,14 +22,15 @@ export function Toaster() {
             key={item.id}
             role={item.tone === "error" ? "alert" : "status"}
             className={cn(
-              "pointer-events-auto flex items-start gap-3 rounded-lg border bg-surface-raised px-3.5 py-3 shadow-xl shadow-black/40 animate-slide-in-right",
-              item.tone === "error" || item.tone === "warning" ? "border-warning/40" : "border-border-strong",
+              "pointer-events-auto flex items-start gap-3 rounded-lg border border-border bg-surface-raised py-3.5 pr-2.5 pl-3.5 shadow-popover animate-slide-in-bottom",
             )}
           >
-            <Icon className={cn("mt-0.5 size-4 shrink-0", className)} aria-hidden />
+            <span className={cn("grid size-8 shrink-0 place-items-center rounded-md", className)}>
+              <Icon className="size-4" aria-hidden />
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-medium text-fg-primary">{item.title}</p>
-              {item.description && <p className="mt-0.5 text-xs leading-relaxed text-fg-secondary">{item.description}</p>}
+              <p className="text-[14px] leading-5 font-medium text-fg-primary">{item.title}</p>
+              {item.description && <p className="mt-0.5 text-meta text-fg-secondary">{item.description}</p>}
             </div>
             <button
               type="button"

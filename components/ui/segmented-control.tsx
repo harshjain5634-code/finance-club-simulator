@@ -16,7 +16,7 @@ type SegmentedControlProps<T extends string> = {
 export function SegmentedControl<T extends string>({ options, value, onChange, label, size = "sm", className }: SegmentedControlProps<T>) {
   return (
     // max-w-full + overflow-x-auto: long option sets stay reachable on narrow screens instead of being clipped.
-    <div role="radiogroup" aria-label={label} className={cn("inline-flex max-w-full items-center overflow-x-auto rounded-md border border-border bg-canvas p-0.5", className)}>
+    <div role="radiogroup" aria-label={label} className={cn("inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md bg-canvas-subtle p-[3px]", className)}>
       {options.map((option) => {
         const item = typeof option === "string" ? { value: option, label: option, disabled: false, hint: undefined } : option;
         const selected = item.value === value;
@@ -30,10 +30,10 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
             title={item.hint}
             onClick={() => onChange(item.value)}
             className={cn(
-              "shrink-0 rounded font-medium tabular-nums whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40",
-              size === "sm" ? "h-6 min-w-8 px-2 text-[11px]" : "h-7 min-w-10 px-3 text-xs",
+              "shrink-0 rounded-sm font-medium tabular-nums whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40",
+              size === "sm" ? "h-[calc(var(--control-h-sm)-6px)] min-w-8 px-2.5 text-caption" : "h-[calc(var(--control-h)-10px)] min-w-10 px-3 text-[13px]",
               selected
-                ? "bg-surface-hover text-fg-primary shadow-[inset_0_0_0_1px_var(--color-border-strong)]"
+                ? "bg-surface text-fg-primary shadow-[inset_0_0_0_1px_var(--color-border)]"
                 : "text-fg-muted hover:text-fg-primary",
             )}
           >

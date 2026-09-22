@@ -1,8 +1,9 @@
 "use client";
 
+import { MARKET_STATE_DISPLAY } from "@/components/market/status";
 import { useNow } from "@/lib/mock/hooks";
 import { formatDuration } from "@/lib/format";
-import { currentRound, deriveMarketState, MARKET_STATE_LABEL, roundRemainingMs } from "@/lib/domain/trading-gate";
+import { currentRound, deriveMarketState, roundRemainingMs } from "@/lib/domain/trading-gate";
 import type { EventState, MarketState } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +74,7 @@ export function SessionChip({ state, className }: { state: EventState; className
         )}
       >
         <StateDot state={marketState} />
-        {MARKET_STATE_LABEL[marketState]}
+        {MARKET_STATE_DISPLAY[marketState]}
       </span>
     </div>
   );

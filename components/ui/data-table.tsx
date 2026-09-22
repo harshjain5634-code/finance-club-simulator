@@ -80,7 +80,7 @@ export function DataTable<T>({
     );
   };
 
-  const cellPad = dense ? "px-3 py-1.5" : "px-4 py-2";
+  const cellPad = dense ? "px-3 py-1.5" : "px-(--panel-p) py-2.5";
   const alignClass = (align?: Column<T>["align"]) => (align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left");
 
   return (
@@ -90,7 +90,7 @@ export function DataTable<T>({
         style={{ "--tbl-min": `${minWidth}px`, "--tbl-min-sm": `${minWidthSm ?? minWidth}px` } as CSSProperties}
       >
         <thead className={cn(maxHeight && "sticky top-0 z-20")}>
-          <tr className="border-y border-border bg-surface-raised">
+          <tr className="border-y border-border bg-canvas-subtle">
             {columns.map((column) => {
               const active = sort?.key === column.key;
               const SortIcon = !active ? ArrowUpDown : sort!.direction === "asc" ? ArrowUp : ArrowDown;
@@ -101,9 +101,9 @@ export function DataTable<T>({
                   aria-sort={active ? (sort!.direction === "asc" ? "ascending" : "descending") : undefined}
                   className={cn(
                     "h-9 font-medium whitespace-nowrap",
-                    dense ? "px-3" : "px-4",
+                    dense ? "px-3" : "px-(--panel-p)",
                     alignClass(column.align),
-                    column.sticky && "sticky left-0 z-10 bg-surface-raised",
+                    column.sticky && "sticky left-0 z-10 bg-canvas-subtle",
                     column.hideBelowSm && "hidden sm:table-cell",
                     column.headerClassName,
                   )}
@@ -113,7 +113,7 @@ export function DataTable<T>({
                       type="button"
                       onClick={() => toggle(column)}
                       className={cn(
-                        "group inline-flex items-center gap-1 rounded text-[11px] tracking-wide uppercase transition-colors",
+                        "group inline-flex items-center gap-1 rounded-xs text-caption transition-colors",
                         column.align === "right" && "flex-row-reverse",
                         active ? "text-fg-primary" : "text-fg-muted hover:text-fg-secondary",
                       )}
@@ -122,7 +122,7 @@ export function DataTable<T>({
                       <SortIcon aria-hidden className={cn("size-3", active ? "text-accent-text" : "opacity-0 group-hover:opacity-100")} />
                     </button>
                   ) : (
-                    <span className="text-[11px] tracking-wide text-fg-muted uppercase">{column.header}</span>
+                    <span className="text-caption text-fg-muted">{column.header}</span>
                   )}
                 </th>
               );
@@ -154,7 +154,7 @@ export function DataTable<T>({
               tabIndex={onRowClick ? 0 : undefined}
               aria-label={onRowClick && rowLabel ? rowLabel(row) : undefined}
               className={cn(
-                "group border-b border-border last:border-b-0",
+                "group border-b border-border-subtle last:border-b-0",
                 onRowClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50",
                 rowClassName?.(row),
               )}
@@ -166,7 +166,7 @@ export function DataTable<T>({
                     cellPad,
                     "whitespace-nowrap transition-colors duration-150 group-hover:bg-surface-hover",
                     alignClass(column.align),
-                    column.align === "right" && "tabular-nums",
+                    column.align === "right" && "font-mono text-[13px] tabular-nums",
                     column.sticky && "sticky left-0 z-10 bg-surface",
                     column.hideBelowSm && "hidden sm:table-cell",
                     column.className,
