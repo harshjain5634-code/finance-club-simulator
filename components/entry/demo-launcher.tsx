@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ExternalLink, FlaskConical, Gauge, MonitorPlay, RotateCcw, SquareTerminal, Zap } from "lucide-react";
+import { ExternalLink, FlaskConical, Gauge, MonitorPlay, Play, RotateCcw, SquareTerminal, Zap } from "lucide-react";
 import { EventStatusBadge } from "@/components/market/status";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -16,10 +16,11 @@ import { formatPrice } from "@/lib/domain/money";
 import { currentRound } from "@/lib/domain/trading-gate";
 import type { OpResult, UniverseMode } from "@/lib/domain/types";
 import { acceptProposal, loadDemoScenario, resetAllPrototypeData, resetDemo } from "@/lib/mock/commands";
+import { loadMidEventDemo } from "@/lib/mock/demo-story";
 import { useStore } from "@/lib/mock/hooks";
 import { toast } from "@/lib/toast";
 
-type PendingAction = { kind: "reset" } | { kind: "load"; scenario: UniverseMode } | { kind: "wipe" } | null;
+type PendingAction = { kind: "reset" } | { kind: "load"; scenario: UniverseMode } | { kind: "wipe" } | { kind: "story" } | null;
 
 function openWindow(url: string) {
   window.open(url, "_blank", "noopener");
@@ -62,9 +63,24 @@ export function DemoLauncher() {
 
   const confirm = async (): Promise<OpResult<unknown>> => {
     if (!pending) return { ok: true, value: undefined };
-    const result = pending.kind === "reset" ? await resetDemo() : pending.kind === "wipe" ? await resetAllPrototypeData() : await loadDemoScenario(pending.scenario, timing);
+    const result =
+      pending.kind === "reset"
+        ? await resetDemo()
+        : pending.kind === "wipe"
+          ? await resetAllPrototypeData()
+          : pending.kind === "story"
+            ? await loadMidEventDemo()
+            : await loadDemoScenario(pending.scenario, timing);
     if (result.ok) {
-      toast.success(pending.kind === "load" ? `Loaded ${pending.scenario === "CUSTOM" ? "custom stock" : "real-simulated"} scenario` : "Demo data reset");
+      const story = pending.kind === "story" ? (result.value as { trades: number; news: number }) : null;
+      toast.success(
+        pending.kind === "load"
+          ? `Loaded ${pending.scenario === "CUSTOM" ? "custom stock" : "real-simulated"} scenario`
+          : pending.kind === "story"
+            ? "Mid-event demo ready"
+            : "Demo data reset",
+        story ? `Round 1 is running with ${story.trades} settled trades and ${story.news} stories released.` : undefined,
+      );
       setTestResult(null);
     }
     return result;
@@ -133,6 +149,10 @@ export function DemoLauncher() {
               </Button>
               <Button variant="secondary" onClick={() => setPending({ kind: "load", scenario: "REAL_SIMULATED" })}>
                 Load real-simulated scenario
+              </Button>
+              <Button variant="primary" onClick={() => setPending({ kind: "story" })}>
+                <Play className="size-3.5" />
+                Load mid-event demo
               </Button>
               <Button variant="warning-outline" onClick={() => setPending({ kind: "reset" })}>
                 <RotateCcw className="size-3.5" />
@@ -207,13 +227,15 @@ export function DemoLauncher() {
         onOpenChange={(open) => !open && setPending(null)}
         tier="confirm"
         tone="warning"
-        title={pending?.kind === "wipe" ? "Reset all prototype data?" : pending?.kind === "reset" ? "Reset the demo event?" : "Load a new demo scenario?"}
+        title={pending?.kind === "wipe" ? "Reset all prototype data?" : pending?.kind === "reset" ? "Reset the demo event?" : pending?.kind === "story" ? "Load the mid-event demo?" : "Load a new demo scenario?"}
         description={
           pending?.kind === "wipe"
             ? "Every event in this browser, including wizard drafts, is replaced with the original seed data."
-            : "FINSIM26 is rebuilt with fresh teams, allocations and news. Trades, adjustments and audit history for the demo event are discarded. Open tabs update automatically."
+            : pending?.kind === "story"
+              ? "FINSIM26 is rebuilt, then the briefing and Round 1 are played for you: two stories go out and a set of team-to-team trades settle, so the standings, tape and charts have real history. Round 1 is left running."
+              : "FINSIM26 is rebuilt with fresh teams, allocations and news. Trades, adjustments and audit history for the demo event are discarded. Open tabs update automatically."
         }
-        confirmLabel={pending?.kind === "wipe" ? "Reset everything" : pending?.kind === "reset" ? "Reset demo event" : "Load scenario"}
+        confirmLabel={pending?.kind === "wipe" ? "Reset everything" : pending?.kind === "reset" ? "Reset demo event" : pending?.kind === "story" ? "Load mid-event demo" : "Load scenario"}
         onConfirm={confirm}
       />
     </div>
