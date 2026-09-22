@@ -281,8 +281,8 @@ function SceneTiles({ state, eventId, onAir, next, cued, onCue }: { state: Event
     const isNext = !isOnAir && next === scene;
     const hidden = scene === "LEADERBOARD" && leaderboard.projectorVisibility === "HIDDEN";
     return (
-      <li key={scene} className={cn("relative flex flex-col rounded-lg border p-3", isOnAir ? "border-accent bg-accent-soft" : cued === scene || isNext ? "border-accent/60 bg-surface" : "border-border bg-surface", locked && "opacity-60")}>
-        <button type="button" disabled={locked} onClick={() => onCue(scene)} className="flex flex-1 flex-col items-start text-left focus-visible:outline-none" aria-label={`Cue ${SCENE_LABEL[scene]}`} aria-pressed={cued === scene}>
+      <li key={scene} className={cn("relative flex flex-col rounded-lg border p-3", isOnAir ? "border-accent bg-accent-soft" : cued === scene || isNext ? "border-accent/60 bg-surface" : "border-border bg-surface", locked && "border-dashed")}>
+        <button type="button" disabled={locked} onClick={() => onCue(scene)} className="flex flex-1 flex-col items-start text-left focus-visible:outline-none" aria-pressed={cued === scene}>
           <span className="flex w-full items-center justify-between">
             <Icon className={cn("size-5", isOnAir ? "text-accent-text" : "text-fg-secondary")} aria-hidden />
             {isOnAir ? <Badge tone="solid-accent">On air</Badge> : cued === scene ? <Badge tone="info">Cued</Badge> : isNext ? <Badge tone="outline">Next</Badge> : locked ? <Lock className="size-3.5 text-fg-muted" aria-hidden /> : null}

@@ -302,7 +302,7 @@ function ProposalTicket({
 
         <Step n={1} title="Who are you trading with?" aside={`${otherTeams.length} teams`}>
           <Select
-            aria-label="Counterparty team"
+            aria-label="Team you are trading with"
             value={counterpartyId}
             onValueChange={setCounterpartyId}
             disabled={!!counterOf}

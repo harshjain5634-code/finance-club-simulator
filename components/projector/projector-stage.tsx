@@ -68,7 +68,7 @@ export function ProjectorStage({ state, joinUrl, preview = false, override = nul
         <div className="flex items-center gap-7">
           <span
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-4 py-2 text-[20px] font-semibold tracking-[0.06em] uppercase",
+              "flex items-center gap-2.5 rounded-md px-4 py-2 text-[20px] font-bold tracking-[0.06em] uppercase",
               warning ? "bg-warning text-warning-fg" : marketState === "OPEN" ? "bg-accent text-accent-fg" : "border-2 border-border-strong text-fg-secondary",
             )}
           >
