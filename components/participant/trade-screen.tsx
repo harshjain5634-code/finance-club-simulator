@@ -53,6 +53,8 @@ export function TradeScreen() {
   const router = useRouter();
   const proposals = proposalsForTeam(state, teamId);
   const open = marketState === "OPEN" && team.status === "ACTIVE";
+  // Waiting on someone else: what we sent, plus trades we accepted that now wait for a host check.
+  const waiting = proposals.all.filter((p) => (p.proposerTeamId === teamId && (p.status === "PROPOSED" || p.status === "PENDING_APPROVAL")) || (p.counterpartyTeamId === teamId && p.status === "PENDING_APPROVAL"));
   const history = proposals.all.filter((p) => !["PROPOSED", "PENDING_APPROVAL", "ACCEPTED"].includes(p.status)).slice(0, 12);
   const counterId = searchParams.get("counter");
   const counterOf = counterId ? (proposals.incomingOpen.find((p) => p.id === counterId) ?? null) : null;
@@ -69,12 +71,12 @@ export function TradeScreen() {
           <ProposalTicket key={counterOf?.id ?? "new"} state={state} teamId={teamId} canSend={open} marketState={marketState} teamDisabled={team.status !== "ACTIVE"} counterOf={counterOf} onCounterDone={endCounter} code={code} />
         </div>
         <div className="order-1 min-w-0 xl:order-2">
-          <Tabs defaultValue={proposals.incomingOpen.length > 0 || proposals.outgoingOpen.length === 0 ? "incoming" : "waiting"}>
+          <Tabs defaultValue={proposals.incomingOpen.length > 0 || waiting.length === 0 ? "incoming" : "waiting"}>
             <TabsList className="border-b-0 px-0">
               <TabsTrigger value="incoming" count={proposals.incomingOpen.length || undefined}>
                 Needs your response
               </TabsTrigger>
-              <TabsTrigger value="waiting" count={proposals.outgoingOpen.length || undefined}>
+              <TabsTrigger value="waiting" count={waiting.length || undefined}>
                 Waiting for others
               </TabsTrigger>
               <TabsTrigger value="history">History</TabsTrigger>
@@ -90,22 +92,22 @@ export function TradeScreen() {
                   <IncomingProposal key={p.id} state={state} teamId={teamId} proposal={p} canRespond={open} focused={p.id === focusId} countering={p.id === counterOf?.id} onCounter={() => startCounter(p)} />
                 ))
               )}
-              {proposals.outgoingOpen.length > 0 && (
+              {waiting.length > 0 && (
                 <>
                   <h2 className="mt-2 flex items-center gap-2 text-h3 font-semibold text-fg-primary">
-                    Waiting for other teams <span className="text-caption font-medium text-fg-muted">{proposals.outgoingOpen.length}</span>
+                    Waiting for other teams <span className="text-caption font-medium text-fg-muted">{waiting.length}</span>
                   </h2>
-                  {proposals.outgoingOpen.map((p) => (
+                  {waiting.map((p) => (
                     <OutgoingProposal key={p.id} state={state} teamId={teamId} proposal={p} />
                   ))}
                 </>
               )}
             </TabsContent>
             <TabsContent value="waiting" className="mt-4 flex flex-col gap-4">
-              {proposals.outgoingOpen.length === 0 ? (
+              {waiting.length === 0 ? (
                 <EmptyList icon={<Send className="size-5" />} title="No offers waiting" body="Proposals you send appear here until the other team answers or they expire." />
               ) : (
-                proposals.outgoingOpen.map((p) => <OutgoingProposal key={p.id} state={state} teamId={teamId} proposal={p} />)
+                waiting.map((p) => <OutgoingProposal key={p.id} state={state} teamId={teamId} proposal={p} />)
               )}
             </TabsContent>
             <TabsContent value="history" className="mt-4">
@@ -488,6 +490,8 @@ function IncomingProposal({ state, teamId, proposal, canRespond, focused, counte
   const remaining = proposal.expiresAt - now;
   const expiring = remaining <= 30_000;
   const instrument = instrumentOf(state, proposal.instrumentId)!;
+  const { approvalEnabled, approvalThreshold } = state.event.rules;
+  const needsApproval = approvalEnabled && approvalThreshold !== null && proposal.price * proposal.quantity >= approvalThreshold;
 
   useEffect(() => {
     if (focused) ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -543,7 +547,7 @@ function IncomingProposal({ state, teamId, proposal, canRespond, focused, counte
       {view.youBuy && view.cashAfter < 0 && <p className="mt-3 text-caption text-negative">You don&apos;t have enough cash for this: it would fail at settlement.</p>}
       <div className="mt-4 grid grid-cols-[1fr_auto_auto] gap-2">
         <Button variant="primary" onClick={() => run("accept")} disabled={pending !== null || !canRespond} title={canRespond ? undefined : "Trading is closed right now"}>
-          {pending === "accept" ? "Settling…" : "Accept & settle"}
+          {pending === "accept" ? (needsApproval ? "Accepting…" : "Settling…") : needsApproval ? "Accept" : "Accept & settle"}
           <ButtonKbd variant="primary">A</ButtonKbd>
         </Button>
         <Button variant="secondary" onClick={onCounter} disabled={pending !== null || !canRespond}>
@@ -554,7 +558,7 @@ function IncomingProposal({ state, teamId, proposal, canRespond, focused, counte
           {pending === "reject" ? "Rejecting…" : "Reject"}
         </Button>
       </div>
-      <p className="mt-3 text-caption text-fg-muted">Accepting settles immediately and can&apos;t be undone. Counter sends {view.otherTeam} a new proposal and rejects this one.</p>
+      <p className="mt-3 text-caption text-fg-muted">{needsApproval ? `Trades of ${formatINR(state.event.rules.approvalThreshold ?? 0, 0)} or more wait for a quick host check after you accept, then settle.` : "Accepting settles immediately and can't be undone."} Counter sends {view.otherTeam} a new proposal and rejects this one.</p>
     </article>
   );
 }
@@ -569,7 +573,7 @@ function OutgoingProposal({ state, teamId, proposal }: { state: EventState; team
       <div className="flex items-center gap-2">
         <Send className="size-4 text-fg-secondary" aria-hidden />
         <p className="text-[13px] font-medium text-fg-secondary">
-          Sent to {view.otherTeam}
+          {proposal.proposerTeamId === teamId ? `Sent to ${view.otherTeam}` : `From ${view.otherTeam} · you accepted`}
           {proposal.counterOfProposalId ? " · counter-offer" : ""}
         </p>
         <span className="ml-auto">

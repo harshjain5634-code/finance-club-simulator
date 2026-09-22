@@ -25,9 +25,17 @@ export type ProposalMonitor = {
   flags: TradeFlag[];
 };
 
-export function monitorProposal(state: Pick<EventState, "event" | "prices">, proposal: Pick<TradeProposal, "instrumentId" | "price" | "quantity">): ProposalMonitor {
+/**
+ * Open proposals are judged against the current last price (what the host would approve into). Finished ones are
+ * judged against the price recorded when they were proposed, so later market moves don't re-flag history.
+ */
+export function monitorProposal(
+  state: Pick<EventState, "event" | "prices">,
+  proposal: Pick<TradeProposal, "instrumentId" | "price" | "quantity"> & Partial<Pick<TradeProposal, "status" | "referencePriceAtProposal">>,
+): ProposalMonitor {
   const value = tradeValue(proposal.price, proposal.quantity);
-  const lastPrice = state.prices[proposal.instrumentId]?.price ?? null;
+  const open = !proposal.status || proposal.status === "PROPOSED" || proposal.status === "ACCEPTED" || proposal.status === "PENDING_APPROVAL";
+  const lastPrice = open ? (state.prices[proposal.instrumentId]?.price ?? null) : (proposal.referencePriceAtProposal ?? state.prices[proposal.instrumentId]?.price ?? null);
   const vsLastPct = lastPrice ? changePct(lastPrice, proposal.price) : null;
   const flags: TradeFlag[] = [];
   if (vsLastPct !== null && Math.abs(vsLastPct) >= FAR_FROM_MARKET_PCT - 1e-9) flags.push("FAR_FROM_MARKET");

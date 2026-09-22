@@ -43,3 +43,14 @@ describe("Host monitoring flags", () => {
     expect(outcome.kind).toBe("SETTLED");
   });
 });
+
+describe("Monitoring history", () => {
+  it("judges finished proposals against the price when proposed, not today's price", () => {
+    const state = liveTradingEvent();
+    const ref = state.prices[NOVA].price;
+    const settled = { instrumentId: NOVA, price: ref, quantity: 1, status: "SETTLED" as const, referencePriceAtProposal: ref };
+    state.prices[NOVA].price = Math.round(ref * 1.2);
+    expect(monitorProposal(state, settled).flags).toEqual([]);
+    expect(monitorProposal(state, { ...settled, status: "PENDING_APPROVAL" }).flags).toEqual(["FAR_FROM_MARKET"]);
+  });
+});
