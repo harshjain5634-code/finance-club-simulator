@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-09-21 · branch `phase1-ux-refinement` (on top of `phase1-full-prototype`) · Phase 1 complete + UX refinement + browser audit pass_
+_Last updated: 2026-09-22 · branch `ui-c4-premium-fintech` · Phase 1 prototype + C4 “Premium Fintech” UI implementation (Figma file `uKRafZUOQb1V0sjxabddJW`, page 43:2)_
 
 Finance Club Stock Market Simulation Platform. **Phase 1 = frontend prototype + mock domain logic only.** It has no database, auth, backend APIs, WebSockets or market data.
 
@@ -9,7 +9,7 @@ Finance Club Stock Market Simulation Platform. **Phase 1 = frontend prototype + 
 ```bash
 npm install
 npm run dev          # http://localhost:3000
-npm run test         # Vitest: domain + workflow tests (54)
+npm run test         # Vitest: domain + workflow tests (77)
 npm run lint
 npm run typecheck
 npm run build
@@ -25,6 +25,7 @@ Demo credentials (`/join/FINSIM26`): Alpha Capital `ALPHA`/`4821`, Beta Street `
 |---|---|
 | Participant dashboard / trade / news | `/join/FINSIM26?demo=ALPHA` (signs in) → `/event/FINSIM26/dashboard` · `/event/FINSIM26/trade` · `/event/FINSIM26/news` |
 | Host control room / news desk / projector control | `/host/events/demo-event` · `/host/events/demo-event/news` · `/host/events/demo-event/display` |
+| Host trades / teams / setup review | `/host/events/demo-event/trades` · `/host/events/demo-event/teams` · `/host/events/demo-event/setup/review` |
 | Projector (live rotation) | `/event/FINSIM26/projector` |
 | Projector single scenes (local review override) | `?scene=leaderboard` · `?scene=market` · `?scene=news` · `?scene=breaking` (also `standby`, `round`, `movers`, `message`, `final`) |
 
@@ -37,7 +38,7 @@ Team sessions live in `sessionStorage`, so sign a tab in with the `?demo=` link 
 | Entry | `/` · `/join` · `/join/[code]` · `/demo` |
 | Participant | `/event/[code]/dashboard` · `/markets` · `/markets/[symbol]` · `/portfolio` · `/trade` · `/transactions` · `/news` · `/leaderboard` · `/rules` |
 | Projector | `/event/[code]/projector` (optional `?key=`; `?scene=` shows one scene on that screen only) |
-| Host | `/host` · `/host/events/new` · `/host/events/[eventId]` (control room) · `/teams` · `/teams/[teamId]` · `/trades` · `/news` · `/prices` · `/leaderboard` · `/setup/general` · `/setup/instruments` · `/setup/allocations` · `/setup/rounds` · `/display` · `/audit` · `/exports` |
+| Host | `/host` · `/host/events/new` · `/host/events/[eventId]` (control room) · `/teams` · `/teams/[teamId]` · `/trades` · `/news` · `/prices` · `/leaderboard` · `/setup` (→ general) · `/setup/general` · `/setup/instruments` · `/setup/allocations` · `/setup/rounds` · `/setup/review` · `/display` · `/audit` · `/exports` |
 
 Demo event: id `demo-event`, code `FINSIM26`. A second sample draft event (`freshers-sprint`, code `FRESH26`) shows the DRAFT state.
 
@@ -48,13 +49,15 @@ app/                  Thin App Router pages (metadata + one screen component); l
 components/
   ui/                 Primitives: button, badge, card, dialog/drawer, confirm-action-dialog (tiers), data-table,
                       field, money-input, select, tabs, controls (switch/checkbox/tooltip), toaster, misc
-  shell/              AppFrame (sidebar + sticky top bar + mobile drawer), brand, mock-runtime mount
+  shell/              ThemeScope (data-theme/density on the document), brand, mock-runtime mount
   market/             Shared domain UI: status badges, round clock, value chart, tables (holdings, trades,
                       proposals, ledger, adjustments, leaderboard), widgets (market board, movers, news)
-  participant/        Terminal shell (session chip, market notice, onboarding), live alerts (breaking-news toast,
-                      proposal notifier), dashboard/trade/portfolio/news/leaderboard screens
-  host/               Host shell + always-visible status bar (live-controls: round/event/freeze actions),
-                      control room, news control panel (manual/random), news desk, projector control, console screens
+  participant/        ParticipantFrame (240px sidebar, topbar status, tablet drawer, phone bottom tabs), live alerts
+                      (Breaking card / Important toast / Update silent), dashboard, trade, markets, stock detail,
+                      portfolio, news, transactions, leaderboard screens
+  host/               Host shell: 64px LIVE/OPS/SETUP rail, Live Control Strip, shortcut bar, ⌘K palette and
+                      keyboard (host-commands.tsx is the single source of availability + confirmations);
+                      control room, news desk, trade monitor, teams, setup frame + review, projector controller
   projector/          1920×1080 scaled stage, ticker, scenes, breaking-news and message overlays
   entry/              Join form, team login, demo launcher
 lib/
@@ -82,6 +85,13 @@ scripts/              browser-smoke.mjs (CDP cross-window smoke test)
 - `leaderboard.ts`: capital base, return %, ranking and tie-break, rank movement, round P&L, visibility views, frozen snapshot.
 - `lifecycle.ts`: event/round lifecycle, freeze, halt, manual price changes, readiness.
 - `setup.ts`: teams, instruments, allocation plan, rounds, general settings, leaderboard and projector settings, news library.
+- C4 additions (conservative, all tested):
+  - `p2p.counterProposal`: a counter is a new prefilled proposal linked by `counterOfProposalId`; the original is rejected with "Countered with PRP-x" and both stay in history. Atomic and idempotent.
+  - `leaderboard.sharedRanks`: presentation-only “=7” labels for teams with equal return and net worth. Engine ranks are unchanged.
+  - `monitoring.ts`: host flags `HIGH_VALUE` (default ₹50,000, optional `rules.highValueThreshold`) and `FAR_FROM_MARKET` (≥5% from last price; finished proposals are judged against their reference price). Monitoring only: no new approval requirement.
+  - `news-schedule.ts`: manual scheduling via optional `NewsItem.scheduledFor` (status stays READY). Validates lead time (10 s–6 h), 30 s spacing and random-news conflicts; releases one due story per tick through the normal manual release path with `scheduledFor` recorded; holds while the event is paused or trading is frozen; `NEWS_SCHEDULED` / `NEWS_UNSCHEDULED` audit. Scheduled stories leave the random pool and the manual queue.
+  - `random-news.ts`: `TRADING_FROZEN` is a block reason. Freeze holds the countdown immediately; unfreeze resumes it with the time left (minimum gap still enforced). Both transitions are audited.
+  - `setup-checks.ts`: read-only cross-step review (e.g. a Ready story moving a stock that isn't tradable in its round). Must-fix items gate the Start event button in the UI.
 - `permissions.ts` defines the role matrix. `event-config.ts` is the zod `EventConfig` schema plus the `EventTemplate` type. `event-state.ts` builds an aggregate from a config. `audit.ts` provides `appendAudit`.
 
 ### Mock architecture (Phase 1 only, `lib/mock`)
@@ -91,7 +101,7 @@ scripts/              browser-smoke.mjs (CDP cross-window smoke test)
 - **Sync:** each commit posts a **BroadcastChannel** message and every tab re-reads (the `storage` event is a fallback). Hooks use `useSyncExternalStore`.
 - **Commands** (`commands.ts`): the only way the UI mutates state. Each checks permissions, runs a domain operation, and supports idempotency keys. The inputs and `OpResult` outputs are designed to be reused by server actions.
 - **Sessions** (`session.ts`): per-tab team identity in `sessionStorage`.
-- **Scheduler** (`runtime.ts`): one leader tab, chosen by a Web Lock, runs a 1-second loop that ends expired rounds, expires proposals and releases due random news. It stands in for the Phase 4 simulation worker. Team tabs send presence pings for "Teams online".
+- **Scheduler** (`runtime.ts`): one leader tab, chosen by a Web Lock, runs a 1-second loop that ends expired rounds, expires proposals and releases due random and scheduled news. It stands in for the Phase 4 simulation worker. Team tabs send presence pings for "Teams online".
 - **Exports** (`exports.ts`): CSV built in the browser (UTF-8 with BOM) for trades, proposals, ledger, balances, holdings, price events, news releases, leaderboard and audit.
 
 ## Dependencies added in Phase 1
@@ -126,7 +136,30 @@ Browser audit pass (2026-09-21):
 - [x] `fix: accessibility, responsive and chart defects found by browser audit`
 - [x] `a11y: meet WCAG AA contrast in the light theme, tighten mobile holdings`
 
-## Verification
+C4 implementation (branch `ui-c4-premium-fintech`):
+
+- [x] `ui: implement C4 design foundation` · `ui: build C4 component system`
+- [x] `ui: implement C4 participant shell` · `…dashboard` · `…trade experience` · `…markets` · `ui: implement remaining participant C4 screens`
+- [x] `ui: implement C4 host shell` · `…host control room`
+- [x] `feat: news desk with manual scheduling; random news pauses during freeze`
+- [x] `ui: implement C4 host trade monitor` · `…host team management` · `…event setup flow and review`
+- [x] `ui: implement C4 projector controller` · `…projector stage`
+- [x] `a11y: fix contrast and tablist semantics found by Lighthouse` · `ui: host strip usable at phone width (visual QA)` · `test: shared leaderboard ranks`
+
+## Verification (C4, 2026-09-22)
+
+- `npm run test`: 77 tests pass (new: counter-offers 4, monitoring 4, news scheduling 6, random news during freeze 3, setup checks 3, shared ranks 3)
+- `npm run lint`, `npm run typecheck`, `npm run build`: clean, no build warnings
+- Lighthouse accessibility (desktop snapshot): dashboard, markets, trade, host control room, news desk, trades: 100
+- Browser workflows (Chrome DevTools, 1440×900 unless noted):
+  - A: propose → accept → settle; balances and ledger update
+  - B: counter-offer (original rejected with a link, counter settles)
+  - C: round control: Start Round with confirmation; P pauses (clock held), P resumes; E opens “End Round 3 now? 14:15 is left”; freeze shows “Trading frozen · Round clock continues”
+  - D: triple Accept on one proposal settles once (1 trade, 1 settlement audit); concurrent host Approve ×2 settles once; all 15 journals balance per asset
+  - Scheduling: a story scheduled for 17:44:05 was held during a freeze and released at unfreeze with the planned time recorded
+- Projector checked at 1920×1080 (leaderboard with =N ranks, breaking takeover with the header clock visible); participant screens also at 390×844
+
+## Verification (Phase 1)
 
 - `npm run test`: 54 tests pass (49 domain, including 11 random-news and 9 projector tests; 5 workflow)
 - `npm run lint`, `npm run typecheck`, `npm run build`: clean
@@ -163,11 +196,26 @@ Browser audit pass (2026-09-21):
   - The host's next/previous/pin/message write to event state, and every projector and the host preview resolve the same scene from the clock.
   - Overlays (breaking news, messages) remember the interrupted scene and resume it.
   - Editing scene settings keeps the current scene on screen.
+- **C4 design system:** DM Sans for UI, DM Mono for numbers. Four token modes via `data-theme` (participant light default, participant dark, host dark, projector stage) and density via `data-density` (comfortable / compact / touch). Participants default to light; the host is always host-dark/compact; the projector uses the stage theme.
+- **News labels:** LOW → Update (feed only), NORMAL → Important (toast), HIGH → Breaking (alert card). Every release takes over the projector for the configured seconds.
+- **Host commands:** strip buttons, N/F/P/E keys, G+key navigation and the ⌘K palette call one provider, so availability and confirmations can't drift. “Next round” always says the active round ends first; reversible pause/resume skip confirmation; freeze/end/start/release confirm (confirm dialogs focus Cancel).
+- **Projector controller:** Take = pin (hold) the cued scene; “Resume auto-rotate” releases it. Takeovers sit between header and ticker so the clock stays visible.
 - **Participant navigation:** six primary items (Dashboard, Markets, Trade, Portfolio, News, Leaderboard) plus Transactions and Rules under "More". Badges appear only for unread news and incoming proposals.
-- **Host navigation:** grouped Live / Market / Setup / Records. Round, trading and event actions live in the status bar on every host page; destructive event actions sit behind the "Event" menu.
+- **Host navigation:** 64px rail grouped LIVE (control room, news desk, trades, projector) / OPS (teams, market, leaderboard, audit) / SETUP (event setup, exports). Round, trading and news actions live in the Live Control Strip on every host page; rarer event actions sit in its “…” menu.
 - **Onboarding:** a 3-step dialog shown once per team per event per browser (`localStorage`).
 
 ## Known issues / TODO
+
+C4-specific:
+
+- **Deferred by decision:** Disqualify (not offered anywhere) and a host tablet layout (the host console works at phone width but is designed for 1024px+).
+- **Not invented (C4 marked unverified or unsupported by the engine):** a projector “news lower third” overlay, a lobby state before Start event, per-story projector treatment, gradual price impacts, and autosave in the news editor (explicit Save instead, to avoid audit noise).
+- **Setup flow:** News, Teams and Projector steps open their live pages, so the step rail isn't shown there.
+- **Dev only:** after HMR the scheduler tab can keep an old tick function; reload all tabs after changing scheduler code.
+- **Demo data:** QA ran on the local demo and it was reset afterwards (`/demo` → “Reset demo event”), so it starts READY with approvals off.
+- `package.json` / `package-lock.json` have an uncommitted `shadcn` devDependency that predates this work; it was deliberately not committed.
+
+Phase 1:
 
 - **Browser scope:** cross-window sync and presence only work within one browser profile. The scheduler only runs while at least one tab is open.
 - **No real security:** PINs are plaintext, the host console has no login, and the projector link isn't enforced without `?key=`.

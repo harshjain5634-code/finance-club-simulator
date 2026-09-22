@@ -74,10 +74,11 @@ node scripts/browser-smoke.mjs smoke-output
 app/          Thin App Router pages; layouts mount the shells
 components/
   ui/         Primitives: button, badge, card, dialog, data-table, field, tabs, toaster…
-  shell/      AppFrame (sidebar + sticky top bar + mobile drawer)
+  shell/      ThemeScope (theme + density on the document), brand
   market/     Shared domain UI: status badges, round clock, charts, tables, widgets
-  participant/ Team terminal shell and screens
-  host/       Host console shell, control room, news desk, setup and records screens
+  participant/ Team terminal frame (sidebar, topbar status, phone tab bar) and screens
+  host/       Host rail + Live Control Strip + ⌘K palette, control room, news desk, trades,
+              teams, setup review, projector controller
   projector/  1920×1080 scaled stage, scenes and overlays
 lib/
   domain/     Pure TypeScript domain logic, no React (money, ledger, prices, news…)
@@ -95,9 +96,12 @@ that server actions will use.
 
 ## Design system
 
-Semantic tokens only (`canvas`, `surface`, `border`, `fg-primary/secondary/muted`,
-`accent`, `positive`, `negative`, `warning`) defined in `app/globals.css`. Dark is the
-production theme; `[data-theme="light"]` overrides the same names.
+The C4 “Premium Fintech” system (Figma `uKRafZUOQb1V0sjxabddJW`). DM Sans for text,
+DM Mono for numbers. Semantic tokens only (`canvas`, `surface`, `border`,
+`fg-primary/secondary/muted`, `accent`, `positive`, `negative`, `warning`) defined in
+`app/globals.css`, with four modes selected by `data-theme`: participant light (default),
+participant dark, host dark, and the projector stage. Density (`comfortable`, `compact`,
+`touch`) is set with `data-density`.
 
 Green and red are reserved for gains and losses and are always paired with a `+`/`−`
 sign, never colour alone. Every route has been checked for WCAG AA contrast in both
