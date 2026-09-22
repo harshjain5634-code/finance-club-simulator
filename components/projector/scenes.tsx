@@ -144,9 +144,22 @@ export function LeaderboardScene({ state }: { state: EventState }) {
   const rows = projectorLeaderboardRows(published.rows, state.event.leaderboard.projectorVisibility, state.event.leaderboard.projectorTopN) ?? [];
   const ranks = sharedRanks(published.rows);
   const twoColumns = rows.length > 12;
-  const perColumn = twoColumns ? Math.ceil(rows.length / 2) : Math.max(1, rows.length);
-  const rowHeight = Math.max(34, Math.min(64, Math.floor(LIST_HEIGHT / perColumn)));
-  const columns = twoColumns ? [rows.slice(0, perColumn), rows.slice(perColumn)] : [rows];
+  const columnCount = twoColumns ? 2 : 1;
+  // Rows never shrink below 34px on a projector, so a long field is capped to what actually fits on the stage and
+  // the rest is summarised underneath — otherwise the last teams render under the ticker and off the screen.
+  const MIN_ROW = 34;
+  const COLUMN_HEADER = 44;
+  const FOOTER = 48;
+  const rowsArea = LIST_HEIGHT - COLUMN_HEADER;
+  const fitsWithoutFooter = Math.max(1, Math.floor(rowsArea / MIN_ROW)) * columnCount;
+  // A longer field than the stage can hold: keep a line free for the "+ N more" summary and drop the overflow.
+  const capacityPerColumn = Math.max(1, Math.floor((rows.length > fitsWithoutFooter ? rowsArea - FOOTER : rowsArea) / MIN_ROW));
+  const shown = Math.min(rows.length, capacityPerColumn * columnCount);
+  const hidden = rows.length - shown;
+  const visible = rows.slice(0, shown);
+  const perColumn = twoColumns ? Math.ceil(visible.length / 2) : Math.max(1, visible.length);
+  const rowHeight = Math.max(MIN_ROW, Math.min(64, Math.floor((hidden > 0 ? rowsArea - FOOTER : rowsArea) / perColumn)));
+  const columns = twoColumns ? [visible.slice(0, perColumn), visible.slice(perColumn)] : [visible];
   const grid = twoColumns ? "grid-cols-[76px_52px_1fr_200px_150px]" : "grid-cols-[88px_80px_1fr_300px_190px]";
   return (
     <div className="flex h-full flex-col">
@@ -166,7 +179,7 @@ export function LeaderboardScene({ state }: { state: EventState }) {
       {rows.length === 0 ? (
         <div className="grid flex-1 place-items-center rounded-2xl border-2 border-dashed border-border-strong text-[32px] text-fg-muted">No teams yet</div>
       ) : (
-        <div className={cn("grid min-h-0 flex-1 content-start gap-x-12", twoColumns ? "grid-cols-2" : "grid-cols-1")}>
+        <div className={cn("grid min-h-0 flex-1 content-start gap-x-12 overflow-hidden", twoColumns ? "grid-cols-2" : "grid-cols-1")}>
           {columns.map((column, index) => (
             <div key={index} className="flex min-w-0 flex-col">
               <div className={cn("grid gap-x-5 border-b-2 border-border-strong pb-2.5 text-[16px] tracking-[0.14em] text-fg-muted uppercase", grid)}>
@@ -184,6 +197,11 @@ export function LeaderboardScene({ state }: { state: EventState }) {
             </div>
           ))}
         </div>
+      )}
+      {hidden > 0 && (
+        <p className="mt-4 shrink-0 text-[20px] text-fg-muted">
+          + {hidden} more {hidden === 1 ? "team" : "teams"} · full table on your screen under Leaderboard
+        </p>
       )}
     </div>
   );

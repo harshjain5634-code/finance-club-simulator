@@ -378,7 +378,7 @@ function StoryPane({ state, item, nextUp, onCreated, onCancelNew }: { state: Eve
         <div className="flex flex-col gap-4">
           {locked && <InlineBanner tone="neutral" title="This story was skipped.">It stays on record but can no longer be released. Edit it to reuse the text in a new story.</InlineBanner>}
           <Section title="What teams will read">
-            <Field label="Headline" htmlFor="story-headline" required>
+            <Field label="Headline" htmlFor="story-headline" required hint={headline.length > 130 ? `${headline.length} characters — the projector shows about the first 130, then trims.` : undefined}>
               <Input id="story-headline" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Nova Motors secures major government EV contract" disabled={locked} />
             </Field>
             <Field label="Story" htmlFor="story-body" hint="Optional detail shown when a team opens the story.">
