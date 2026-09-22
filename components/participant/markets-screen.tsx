@@ -183,7 +183,7 @@ export function MarketsScreen() {
               align: "right",
               className: "font-sans",
               cell: (r) => (
-                <span className="inline-flex gap-1.5 opacity-60 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                <span className="inline-flex gap-1.5">
                   <Link href={buySell(r.instrument.symbol, "BUY")} onClick={(e) => e.stopPropagation()} className={buttonClasses({ variant: "ghost", size: "sm", className: "group-hover:border group-hover:border-border-strong group-hover:bg-surface" })} aria-label={`Buy ${r.instrument.symbol}`}>
                     Buy
                   </Link>

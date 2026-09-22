@@ -237,7 +237,7 @@ function TradeRow({ state, p, flags, now, selected, onSelect }: { state: EventSt
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect())}
-      aria-selected={selected}
+      aria-current={selected ? "true" : undefined}
       className={cn("h-(--row-h) cursor-pointer border-b border-border-subtle hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none", selected && "bg-accent-soft/50 shadow-[inset_2px_0_0_var(--color-accent)] hover:bg-accent-soft/60")}
     >
       <td className="pl-5 font-mono text-[13px] text-fg-muted">{formatClock(lastAt(p), true)}</td>

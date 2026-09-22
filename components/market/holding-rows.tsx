@@ -71,7 +71,7 @@ export function HoldingRows({ state, holdings, code, variant = "dashboard", limi
                   </td>
                 )}
                 <td className="pr-(--panel-p) text-right">
-                  <span className="inline-flex gap-1.5 opacity-70 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                  <span className="inline-flex gap-1.5">
                     <Link href={tradeHref(instrument.symbol, "BUY")} className={buttonClasses({ variant: "ghost", size: "sm", className: "group-hover:border group-hover:border-border-strong group-hover:bg-surface" })} aria-label={`Buy ${instrument.symbol}`}>
                       Buy
                     </Link>

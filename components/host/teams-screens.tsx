@@ -122,7 +122,7 @@ export function TeamsScreen() {
                   tabIndex={0}
                   onClick={() => select(r.team.id)}
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), select(r.team.id))}
-                  aria-selected={selected?.team.id === r.team.id}
+                  aria-current={selected?.team.id === r.team.id ? "true" : undefined}
                   className={cn(
                     "h-(--row-h) cursor-pointer border-b border-border-subtle hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none",
                     selected?.team.id === r.team.id && "bg-accent-soft/50 shadow-[inset_2px_0_0_var(--color-accent)]",
