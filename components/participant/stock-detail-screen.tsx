@@ -1,36 +1,65 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowLeftRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { buttonClasses } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Pin } from "lucide-react";
+import { buttonClasses, ButtonKbd } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/controls";
 import { Delta } from "@/components/ui/delta";
-import { EmptyState, InlineBanner, KeyValueList } from "@/components/ui/misc";
+import { Avatar, EmptyState } from "@/components/ui/misc";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { SymbolMark } from "@/components/market/tables";
-import { ValueChart } from "@/components/market/value-chart";
-import { NewsReleaseItem } from "@/components/market/widgets";
+import { PriceChart, PriceChartLegend } from "@/components/market/price-chart";
+import { useRoundClock } from "@/components/market/round-clock";
 import { priceBand } from "@/lib/domain/p2p";
 import { formatINR, formatPct, formatPrice } from "@/lib/domain/money";
+import { teamCash } from "@/lib/domain/portfolio";
 import { checkTradingGate, currentRound } from "@/lib/domain/trading-gate";
-import { useNow } from "@/lib/mock/hooks";
-import { instrumentRows, priceSeries, releasesNewestFirst, teamSummary, type ChartRange } from "@/lib/mock/selectors";
-import { formatQuantity } from "@/lib/format";
+import { formatClock, formatQuantity } from "@/lib/format";
+import { instrumentRows, priceMoves, priceSeries, teamSummary, type ChartRange } from "@/lib/mock/selectors";
+import { cn } from "@/lib/utils";
+import { NeedsAttention, useAttentionItems } from "./needs-attention";
 import { useTerminal } from "./terminal-context";
+import { useWatchlist } from "./watchlist";
 
+type Range = "ROUND" | "EVENT" | "PRE_EVENT";
+
+/**
+ * C4 stock detail (section 08). Header: identity, price, change since the round opened and the two trade actions
+ * (B / S). Left: the annotated price chart and the "what moved it" table (its accessible equivalent). Right: the
+ * team's position, any open proposal on this stock, and the limits that apply right now.
+ */
 export function StockDetailScreen() {
-  const { state, code, teamId, team } = useTerminal();
+  const { state, code, teamId, team, eventId } = useTerminal();
   const params = useParams<{ symbol: string }>();
+  const router = useRouter();
   const symbol = decodeURIComponent(params.symbol).toUpperCase();
-  const now = useNow();
-  const real = state.event.universeMode === "REAL_SIMULATED";
-  const [range, setRange] = useState<ChartRange>(state.event.startedAt ? "EVENT" : real ? "PRE_EVENT" : "EVENT");
+  const { now, round } = useRoundClock(state);
+  const { list, toggle } = useWatchlist(eventId, teamId);
+  const [range, setRange] = useState<Range>(round ? "ROUND" : state.event.startedAt ? "EVENT" : "PRE_EVENT");
+  const [showTrades, setShowTrades] = useState(true);
 
   const row = useMemo(() => instrumentRows(state, { enabledOnly: true }).find((r) => r.instrument.symbol === symbol), [state, symbol]);
-  const series = useMemo(() => (row ? priceSeries(state, row.instrument.id, range, now) : []), [state, row, range, now]);
+  const series = useMemo(() => (row ? priceSeries(state, row.instrument.id, range as ChartRange, now) : []), [state, row, range, now]);
+  const moves = useMemo(() => (row ? priceMoves(state, row.instrument.id) : []), [state, row]);
+  const attention = useAttentionItems(state, teamId, now).filter((i) => row && i.proposal.instrumentId === row.instrument.id && i.kind === "incoming");
+
+  // B / S open the ticket for this stock.
+  useEffect(() => {
+    if (!row) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (event.metaKey || event.ctrlKey || event.altKey || (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) || target?.closest("[role=dialog]")) return;
+      const key = event.key.toLowerCase();
+      if (key === "b" || key === "s") {
+        event.preventDefault();
+        router.push(`/event/${code}/trade?symbol=${row.instrument.symbol}&side=${key === "b" ? "BUY" : "SELL"}`);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [row, router, code]);
 
   if (!row) {
     return (
@@ -40,8 +69,7 @@ export function StockDetailScreen() {
           description="Only stocks enabled by the host can be viewed and traded."
           action={
             <Link href={`/event/${code}/markets`} className={buttonClasses({ variant: "secondary" })}>
-              <ArrowLeft className="size-3.5" />
-              Back to markets
+              <ArrowLeft /> Back to markets
             </Link>
           }
         />
@@ -52,134 +80,209 @@ export function StockDetailScreen() {
   const { instrument } = row;
   const summary = teamSummary(state, teamId)!;
   const position = summary.holdings.find((h) => h.instrumentId === instrument.id);
-  const related = releasesNewestFirst(state).filter((r) => r.impacts.some((i) => i.instrumentId === instrument.id));
+  const cash = teamCash(state, teamId);
   const band = priceBand(row.price, state.event.rules.priceBandPct, state.event.rules.tickSize);
   const gate = checkTradingGate({ event: state.event, round: currentRound(state), teams: [team], instrument, now });
-  const ranges: { value: ChartRange; label: string }[] = [
-    { value: "15M", label: "15M" },
-    { value: "ROUND", label: "Round" },
-    { value: "EVENT", label: "Event" },
-    ...(real ? [{ value: "PRE_EVENT" as const, label: "Pre-event" }] : []),
-  ];
+  const watched = list.includes(instrument.id);
+  const basis = range === "ROUND" ? row.snapshot.roundOpenPrice : range === "EVENT" ? row.snapshot.eventOpenPrice : (series[0]?.value ?? row.price);
+  const change = row.price - basis;
+  const roundTrades = state.trades.filter((t) => t.instrumentId === instrument.id).map((t) => ({ t: t.settledAt, price: t.price, quantity: t.quantity }));
+  // One rule per moment: a round that ends as the next one opens gets a single "opens" label.
+  const boundaries = state.rounds
+    .filter((r) => r.startedAt)
+    .sort((a, b) => a.startedAt! - b.startedAt!)
+    .flatMap((r) => [
+      { t: r.startedAt!, label: r.type === "BRIEFING" ? `Briefing ${formatClock(r.startedAt!)}` : `R${r.number} opens ${formatClock(r.startedAt!)}` },
+      ...(r.endedAt ? [{ t: r.endedAt, label: r.type === "BRIEFING" ? "Briefing ended" : `R${r.number} ended` }] : []),
+    ])
+    .filter((b, index, all) => !all.some((other, j) => j > index && Math.abs(other.t - b.t) < 60_000));
+  const axisEnd = range === "ROUND" && round?.status === "RUNNING" && round.endsAt ? round.endsAt : undefined;
+  const recentMoves = [...moves].reverse().slice(0, 6);
+  const maxBuy = Math.floor(cash / row.price);
 
   return (
-    <div className="flex flex-col gap-3">
-      <Link href={`/event/${code}/markets`} className="inline-flex w-fit items-center gap-1.5 rounded text-xs text-fg-secondary hover:text-fg-primary">
-        <ArrowLeft className="size-3.5" />
-        Markets
-      </Link>
-
-      <Card className="px-4 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <SymbolMark symbol={instrument.symbol} className="size-11 text-sm" />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg leading-7 font-semibold tracking-tight text-fg-primary">{instrument.name}</h1>
-                <Badge tone="outline" className="font-mono">{instrument.symbol}</Badge>
-                {instrument.halted && <Badge tone="warning" dot>Halted</Badge>}
-              </div>
-              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-fg-muted">
-                <span>{instrument.sector}</span>
-                <span aria-hidden>·</span>
-                <span>{real ? `Real company${instrument.exchange ? ` (${instrument.exchange})` : ""} · Simulated market` : "Fictional company · Simulated market"}</span>
-              </p>
-            </div>
+    <div className="flex flex-col gap-5">
+      {/* Header */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <Link href={`/event/${code}/markets`} className={buttonClasses({ variant: "ghost", size: "sm", className: "-ml-2" })}>
+          <ArrowLeft /> All stocks
+        </Link>
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={instrument.name} text={instrument.symbol.slice(0, 2)} tone="accent" size="lg" />
+          <div className="min-w-0">
+            <h1 className="truncate text-h1 font-semibold tracking-[-0.01em] text-fg-primary">{instrument.name}</h1>
+            <p className="text-meta text-fg-muted">
+              {instrument.symbol} · {instrument.sector} · {instrument.halted ? <span className="font-medium text-warning">Halted by host</span> : "Trading"}
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-5">
-            <div>
-              <p className="text-[11px] tracking-wide text-fg-muted uppercase">Reference price</p>
-              <p className="text-2xl leading-8 font-semibold tracking-tight text-fg-primary tabular-nums">₹{formatPrice(row.price)}</p>
-            </div>
-            <div className="text-xs leading-relaxed">
-              <p className="flex items-center justify-between gap-3"><span className="text-fg-muted">Round</span><Delta value={row.roundChangePct} variant="pill" showArrow /></p>
-              <p className="mt-1 flex items-center justify-between gap-3"><span className="text-fg-muted">Event</span><Delta value={row.eventChangePct} variant="pill" showArrow /></p>
-            </div>
-            <Link href={`/event/${code}/trade?symbol=${encodeURIComponent(instrument.symbol)}`} className={buttonClasses({ variant: "primary", size: "lg" })}>
-              <ArrowLeftRight className="size-4" />
-              Propose trade
+        </div>
+        <button
+          type="button"
+          onClick={() => toggle(instrument.id)}
+          aria-pressed={watched}
+          aria-label={watched ? `Remove ${instrument.symbol} from watchlist` : `Add ${instrument.symbol} to watchlist`}
+          className={cn("grid size-(--control-h-sm) place-items-center rounded-md border border-border-strong bg-surface hover:bg-surface-hover", watched ? "text-accent-text" : "text-fg-muted")}
+        >
+          <Pin className={cn("size-4", watched && "fill-current")} />
+        </button>
+        <div className="ml-auto flex flex-wrap items-center gap-5">
+          <div className="text-right">
+            <p className="text-value-l font-semibold tracking-[-0.015em] text-fg-primary tabular-nums">₹{formatPrice(row.price)}</p>
+            <p className="text-meta">
+              <Delta value={change} format="inr" showArrow className="font-medium" /> <span className={cn("font-medium", change > 0 ? "text-positive" : change < 0 ? "text-negative" : "text-fg-muted")}>· {formatPct(row.roundChangePct, { signed: false })}</span>{" "}
+              <span className="text-fg-muted">since {round?.type === "TRADING" ? `Round ${round.number} opened` : "the event started"}</span>
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link href={`/event/${code}/trade?symbol=${instrument.symbol}&side=BUY`} className={buttonClasses({ variant: "primary" })} aria-keyshortcuts="B">
+              Buy {instrument.symbol} <ButtonKbd variant="primary">B</ButtonKbd>
+            </Link>
+            <Link href={`/event/${code}/trade?symbol=${instrument.symbol}&side=SELL`} className={buttonClasses({ variant: "secondary" })} aria-keyshortcuts="S">
+              Sell {instrument.symbol} <ButtonKbd>S</ButtonKbd>
             </Link>
           </div>
         </div>
-      </Card>
+      </div>
 
       {!gate.ok && (
-        <InlineBanner tone={gate.code === "INSTRUMENT_HALTED" || gate.code === "TRADING_FROZEN" ? "warning" : "neutral"} title="Trading unavailable.">
-          {gate.message}
-        </InlineBanner>
+        <p role="status" className="rounded-md bg-warning-soft px-4 py-2.5 text-meta text-fg-primary">
+          <span className="font-medium">Trading unavailable:</span> {gate.message}
+        </p>
       )}
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-        <div className="flex flex-col gap-3 xl:col-span-8">
-          <Card>
-            <CardHeader
-              title="Price chart"
-              subtitle={range === "PRE_EVENT" ? "Daily closes before the event (illustrative)" : "Reference price · changes only via news and host actions"}
-              action={<SegmentedControl options={ranges} value={range} onChange={setRange} label="Chart range" />}
-            />
-            <ValueChart points={series} range={range} height="h-72" className="px-1 pb-2" label={`${instrument.symbol} price chart`} compactAxis={false} baseline={range === "PRE_EVENT" ? undefined : range === "ROUND" ? row.snapshot.roundOpenPrice : row.snapshot.eventOpenPrice} />
-          </Card>
-          <Card>
-            <CardHeader title="About" subtitle={instrument.sector} divider />
-            <div className="px-4 py-3.5">
-              <p className="text-[13px] leading-relaxed text-fg-secondary">{instrument.description || "No description provided."}</p>
-              <KeyValueList
-                className="mt-4"
-                columns={3}
-                items={[
-                  { label: "Starting price", value: `₹${formatPrice(instrument.startingPrice)}` },
-                  { label: "Round open", value: `₹${formatPrice(row.snapshot.roundOpenPrice)}` },
-                  { label: "Total supply", value: `${formatQuantity(instrument.supply)} shares` },
-                  { label: "Floor / ceiling", value: `${instrument.floor ? `₹${formatPrice(instrument.floor)}` : "—"} / ${instrument.ceiling ? `₹${formatPrice(instrument.ceiling)}` : "—"}` },
-                  { label: "Circuit limit", value: instrument.circuitPct ? `±${instrument.circuitPct}% per round` : "None" },
-                  { label: "P2P price band", value: `₹${formatPrice(band.min)} – ₹${formatPrice(band.max)}` },
-                ]}
-              />
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_336px]">
+        <Card className="flex min-w-0 flex-col gap-4 p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-0">
+              <h2 className="text-h3 font-semibold text-fg-primary">Price · {range === "ROUND" && round ? (round.type === "BRIEFING" ? "Briefing" : `Round ${round.number}`) : range === "EVENT" ? "Event" : "30 days before the event"}</h2>
+              <p className="text-caption text-fg-muted">{range === "ROUND" && axisEnd ? `${formatClock(round!.startedAt!)} – ${formatClock(axisEnd)} · the axis spans the whole round` : range === "PRE_EVENT" ? "Daily closes (illustrative history)" : "Prices change only at price events"}</p>
             </div>
-          </Card>
-          <Card>
-            <CardHeader title="Related news" subtitle={`${related.length} released stor${related.length === 1 ? "y" : "ies"} affected ${instrument.symbol}`} divider />
-            {related.length === 0 ? (
-              <p className="px-4 py-8 text-center text-[13px] text-fg-muted">No released news has affected {instrument.symbol} yet.</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {related.map((release) => (
-                  <NewsReleaseItem key={release.id} state={state} release={release} now={now} />
-                ))}
-              </div>
+            <SegmentedControl
+              className="ml-auto"
+              size="md"
+              label="Chart range"
+              value={range}
+              onChange={setRange}
+              options={[
+                { value: "ROUND", label: round?.type === "TRADING" ? `Round ${round.number}` : "Round", disabled: !round },
+                { value: "EVENT", label: "Event", disabled: !state.event.startedAt },
+                { value: "PRE_EVENT", label: "30 days" },
+              ]}
+            />
+            {range !== "PRE_EVENT" && (
+              <label className="flex items-center gap-2 text-[13px] font-medium text-fg-secondary">
+                <Switch checked={showTrades} onCheckedChange={setShowTrades} label="Show trades between teams" />
+                Trades
+              </label>
             )}
-          </Card>
-        </div>
+          </div>
+          <PriceChart
+            points={series}
+            baseline={basis}
+            baselineLabel={range === "ROUND" ? `Round open ${formatPrice(basis)}` : range === "EVENT" ? `Event open ${formatPrice(basis)}` : ""}
+            moves={range === "PRE_EVENT" ? [] : moves}
+            trades={showTrades && range !== "PRE_EVENT" ? roundTrades : []}
+            boundaries={range === "EVENT" ? boundaries : range === "ROUND" ? boundaries.filter((b) => round?.startedAt && b.t >= round.startedAt) : []}
+            axisEnd={axisEnd}
+            now={now}
+            daily={range === "PRE_EVENT"}
+            label={`${instrument.symbol} price chart. The table below lists every price change.`}
+          />
+          {range !== "PRE_EVENT" && <PriceChartLegend symbol={instrument.symbol} showTrades={showTrades} />}
 
-        <div className="flex flex-col gap-3 xl:col-span-4">
-          <Card>
-            <CardHeader title="My position" subtitle={team.name} divider />
+          <div className="overflow-hidden rounded-md border border-border-subtle">
+            <table className="w-full border-collapse">
+              <caption className="sr-only">What moved {instrument.symbol}</caption>
+              <thead>
+                <tr className="h-8 bg-canvas-subtle text-caption text-fg-muted">
+                  <th scope="col" className="w-24 px-3 text-left font-medium">Time</th>
+                  <th scope="col" className="px-3 text-left font-medium">What moved the price</th>
+                  <th scope="col" className="w-24 px-3 text-right font-medium">Change</th>
+                  <th scope="col" className="w-48 px-3 text-right font-medium">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentMoves.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-4 text-center text-meta text-fg-muted">
+                      No price changes yet. {instrument.symbol} opened at ₹{formatPrice(row.snapshot.eventOpenPrice || instrument.startingPrice)}.
+                    </td>
+                  </tr>
+                ) : (
+                  recentMoves.map((m) => (
+                    <tr key={m.id} className="h-10 border-t border-border-subtle">
+                      <td className="px-3 font-mono text-[13px] text-fg-muted">{formatClock(m.at, true)}</td>
+                      <td className="px-3 text-[13px] text-fg-primary">
+                        {m.source === "NEWS" ? `News #${m.newsNumber ?? "?"} · ${m.headline ?? "Story"}` : m.source === "MANUAL" ? "Host price change" : m.source === "OPENING" ? "Opening price" : "Price change"}
+                      </td>
+                      <td className="px-3 text-right font-mono text-[13px]">{m.source === "OPENING" ? <span className="text-fg-muted">—</span> : <Delta value={m.changePct} showArrow />}</td>
+                      <td className="px-3 text-right font-mono text-[13px] whitespace-nowrap text-fg-primary">
+                        {m.source === "OPENING" ? formatPrice(m.to) : `${formatPrice(m.from)} → ${formatPrice(m.to)}`}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <div className="flex flex-col gap-5">
+          <Card className="p-5">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-h3 font-semibold text-fg-primary">Your position</h2>
+              {position && <span className="text-caption text-fg-muted">{formatPct(position.allocationPct, { signed: false, decimals: 1 })} of net worth</span>}
+            </div>
             {position ? (
-              <div className="px-4 py-3.5">
-                <KeyValueList
-                  columns={2}
-                  items={[
-                    { label: "Quantity", value: `${formatQuantity(position.quantity)} shares` },
-                    { label: "Average cost", value: `₹${formatPrice(Math.round(position.averageCost))}` },
-                    { label: "Current value", value: formatINR(position.value) },
-                    { label: "Unrealized P&L", value: <Delta value={position.unrealizedPnl} format="inr" /> },
-                    { label: "Return", value: <Delta value={position.returnPct} /> },
-                    { label: "Of net worth", value: formatPct(position.allocationPct, { signed: false, decimals: 1 }) },
-                  ]}
-                />
-              </div>
+              <>
+                <p className="mt-3 text-value-m font-semibold text-fg-primary tabular-nums">{formatINR(position.value, 0)}</p>
+                <p className="mt-0.5 text-[13px] font-medium">
+                  <Delta value={position.unrealizedPnl} format="inr" decimals={0} /> <Delta value={position.returnPct} showArrow /> <span className="font-normal text-fg-muted">unrealized</span>
+                </p>
+                <dl className="mt-4 flex flex-col gap-2.5">
+                  {[
+                    ["Shares held", formatQuantity(position.quantity)],
+                    ["Average price", `₹${formatPrice(Math.round(position.averageCost))}`],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex items-center justify-between">
+                      <dt className="text-[13px] text-fg-secondary">{k}</dt>
+                      <dd className="font-mono text-[13px] text-fg-primary">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
             ) : (
-              <p className="px-4 py-6 text-[13px] text-fg-muted">You do not hold {instrument.symbol}. Propose a buy to another team to open a position.</p>
+              <p className="mt-2 text-meta text-fg-secondary">You don&apos;t hold {instrument.symbol}. Propose a buy to another team to open a position.</p>
             )}
           </Card>
-          <Card>
-            <CardHeader title="How P2P trading works" divider />
-            <ol className="list-decimal space-y-1.5 py-3.5 pr-4 pl-8 text-[13px] leading-relaxed text-fg-secondary">
-              <li>Agree a price with another team in the room.</li>
-              <li>Propose the trade here within ₹{formatPrice(band.min)} – ₹{formatPrice(band.max)}.</li>
-              <li>The other team accepts; the trade settles instantly and both portfolios update.</li>
-            </ol>
+
+          {attention.length > 0 && <NeedsAttention state={state} teamId={teamId} code={code} items={attention} now={now} />}
+
+          <Card className="p-5">
+            <h2 className="text-h3 font-semibold text-fg-primary">Your limits on {instrument.symbol}</h2>
+            <dl className="mt-3 flex flex-col gap-2.5">
+              {[
+                ["Sell up to", `${formatQuantity(position?.quantity ?? 0)} shares`],
+                ["Buy up to", `${formatQuantity(maxBuy)} shares`],
+                ["Price allowed now", `₹${formatPrice(band.min)} – ₹${formatPrice(band.max)}`],
+                ["Price steps", `₹${formatPrice(state.event.rules.tickSize)}`],
+              ].map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between gap-3">
+                  <dt className="text-[13px] text-fg-secondary">{k}</dt>
+                  <dd className="font-mono text-[13px] text-fg-primary">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-3 text-caption text-fg-muted">
+              Buy limit uses your cash ({formatINR(cash, 0)}) at the last price. Prices must stay within ±{state.event.rules.priceBandPct}% of the last price. No short selling.
+            </p>
           </Card>
+          {instrument.description && (
+            <Card className="p-5">
+              <h2 className="text-h3 font-semibold text-fg-primary">About {instrument.name}</h2>
+              <p className="mt-2 text-meta text-fg-secondary">{instrument.description}</p>
+            </Card>
+          )}
         </div>
       </div>
     </div>

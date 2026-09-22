@@ -242,3 +242,44 @@ export function proposalView(state: EventState, proposal: TradeProposal, teamId:
     sentence,
   };
 }
+
+/** Shares and rupee value traded in one stock (a round, or the whole event when roundId is null). */
+export function instrumentVolume(state: EventState, instrumentId: string, roundId: string | null) {
+  const trades = state.trades.filter((t) => t.instrumentId === instrumentId && (roundId === null || t.roundId === roundId));
+  return { count: trades.length, shares: trades.reduce((sum, t) => sum + t.quantity, 0), value: trades.reduce((sum, t) => sum + t.value, 0) };
+}
+
+export type PriceMove = {
+  id: string;
+  at: number;
+  from: Paise;
+  to: Paise;
+  changePct: number;
+  source: "NEWS" | "MANUAL" | "OPENING" | "OTHER";
+  /** Released headline and story number for NEWS moves; configured impacts are never exposed here. */
+  headline: string | null;
+  newsNumber: number | null;
+  priority: "LOW" | "NORMAL" | "HIGH" | null;
+};
+
+/** Observed price moves for one stock, oldest first: what changed, when, and the released reason. */
+export function priceMoves(state: EventState, instrumentId: string): PriceMove[] {
+  return state.priceEvents
+    .filter((e) => e.instrumentId === instrumentId)
+    .sort((a, b) => a.at - b.at)
+    .map((e) => {
+      const release = e.newsReleaseId ? state.newsReleases.find((r) => r.id === e.newsReleaseId) : undefined;
+      const item = release ? state.news.find((n) => n.id === release.newsItemId) : undefined;
+      return {
+        id: e.id,
+        at: e.at,
+        from: e.previousPrice,
+        to: e.newPrice,
+        changePct: changePct(e.previousPrice, e.newPrice),
+        source: e.source === "NEWS" ? "NEWS" : e.source === "MANUAL" ? "MANUAL" : e.source === "OPENING" ? "OPENING" : "OTHER",
+        headline: release?.headline ?? null,
+        newsNumber: item?.number ?? null,
+        priority: item?.priority ?? null,
+      };
+    });
+}
