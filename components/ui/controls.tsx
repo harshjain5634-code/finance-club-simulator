@@ -25,7 +25,7 @@ export function Switch({
       onCheckedChange={onCheckedChange}
       disabled={disabled}
       aria-label={label}
-      className="relative h-5 w-9 shrink-0 rounded-full border border-border-strong bg-canvas-subtle transition-colors data-[state=checked]:border-accent data-[state=checked]:bg-accent disabled:cursor-not-allowed disabled:opacity-45"
+      className="relative flex h-5 w-9 shrink-0 items-center rounded-full border border-border-strong bg-canvas-subtle [@media(pointer:coarse)]:h-6 transition-colors data-[state=checked]:border-accent data-[state=checked]:bg-accent disabled:cursor-not-allowed disabled:opacity-45"
     >
       <RadixSwitch.Thumb className="block size-3.5 translate-x-0.5 rounded-full bg-fg-muted shadow-sm transition-transform data-[state=checked]:translate-x-[18px] data-[state=checked]:bg-accent-fg" />
     </RadixSwitch.Root>
