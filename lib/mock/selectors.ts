@@ -2,7 +2,7 @@ import { actorLabel } from "@/lib/domain/audit";
 import { teamAccount } from "@/lib/domain/ledger";
 import { computeLeaderboard } from "@/lib/domain/leaderboard";
 import { changePct } from "@/lib/domain/money";
-import { holdingsValue, netWorth, returnPct, teamCash, teamHoldings, type HoldingView } from "@/lib/domain/portfolio";
+import { holdingsValue, netWorth, returnPct, teamCash, teamHoldings, teamShares, type HoldingView } from "@/lib/domain/portfolio";
 import { currentRound } from "@/lib/domain/trading-gate";
 import type {
   AuditEvent,
@@ -186,4 +186,59 @@ export function isBuyerFor(proposal: TradeProposal, teamId: string) {
 export function tradingVolume(state: EventState, roundId: string | null) {
   const trades = roundId ? state.trades.filter((t) => t.roundId === roundId) : state.trades;
   return { count: trades.length, value: trades.reduce((sum, t) => sum + t.value, 0) };
+}
+
+export type ProposalView = {
+  proposal: TradeProposal;
+  incoming: boolean;
+  /** True when the viewing team ends up buying. */
+  youBuy: boolean;
+  otherTeam: string;
+  symbol: string;
+  companyName: string;
+  value: Paise;
+  cashAfter: Paise;
+  sharesAfter: number;
+  sharesNow: number;
+  lastPrice: Paise;
+  /** proposal price − last price, in paise (negative = below the market). */
+  vsLast: Paise;
+  /** Plain-English sentence from the viewing team's perspective. */
+  sentence: string;
+};
+
+/**
+ * Everything a team needs to judge a proposal without opening it: who, what, the cash and shares it leaves
+ * them with, and how the price compares with the market. Pure view logic; settlement rules stay in the domain.
+ */
+export function proposalView(state: EventState, proposal: TradeProposal, teamId: string): ProposalView {
+  const incoming = proposal.counterpartyTeamId === teamId;
+  const youBuy = isBuyerFor(proposal, teamId);
+  const instrument = instrumentOf(state, proposal.instrumentId);
+  const symbol = instrument?.symbol ?? proposal.instrumentId;
+  const value = proposal.price * proposal.quantity;
+  const cash = teamCash(state, teamId);
+  const sharesNow = teamShares(state, teamId, proposal.instrumentId);
+  const lastPrice = state.prices[proposal.instrumentId]?.price ?? proposal.price;
+  const other = teamNameOf(state)(incoming ? proposal.proposerTeamId : proposal.counterpartyTeamId);
+  const price = `₹${(proposal.price / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const qty = proposal.quantity.toLocaleString("en-IN");
+  const sentence = incoming
+    ? `${other} wants to ${youBuy ? "sell you" : "buy"} ${qty} ${symbol}${youBuy ? "" : " from you"} at ${price}`
+    : `You offered to ${youBuy ? "buy" : "sell"} ${qty} ${symbol} ${youBuy ? "from" : "to"} ${other} at ${price}`;
+  return {
+    proposal,
+    incoming,
+    youBuy,
+    otherTeam: other,
+    symbol,
+    companyName: instrument?.name ?? symbol,
+    value,
+    cashAfter: youBuy ? cash - value : cash + value,
+    sharesNow,
+    sharesAfter: youBuy ? sharesNow + proposal.quantity : sharesNow - proposal.quantity,
+    lastPrice,
+    vsLast: proposal.price - lastPrice,
+    sentence,
+  };
 }

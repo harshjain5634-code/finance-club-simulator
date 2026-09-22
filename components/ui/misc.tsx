@@ -110,7 +110,7 @@ export function PageHeader({ title, description, actions, meta, className }: { t
   );
 }
 
-export function Avatar({ name, size = "md", tone = "neutral", className }: { name: string; size?: "sm" | "md" | "lg"; tone?: "neutral" | "accent"; className?: string }) {
+export function Avatar({ name, text, size = "md", tone = "neutral", className }: { name: string; text?: string; size?: "sm" | "md" | "lg"; tone?: "neutral" | "accent"; className?: string }) {
   const sizes = { sm: "size-6 text-[11px]", md: "size-8 text-[12px]", lg: "size-10 text-[13px]" };
   return (
     <span
@@ -122,7 +122,7 @@ export function Avatar({ name, size = "md", tone = "neutral", className }: { nam
         className,
       )}
     >
-      {initials(name)}
+      {text ?? initials(name)}
     </span>
   );
 }
