@@ -114,7 +114,7 @@ export function NewsScreen() {
             <SearchInput value={query} onChange={setQuery} placeholder="Search headlines and stocks" label="Search news" />
           </div>
           <p className="mt-1 flex items-center justify-between text-caption">
-            <span className="overline text-fg-muted">Newest first</span>
+            <span className="eyebrow text-fg-muted">Newest first</span>
             <span className="text-fg-muted">{filtered.length} shown</span>
           </p>
           {filtered.length === 0 ? (

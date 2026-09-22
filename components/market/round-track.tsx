@@ -50,7 +50,7 @@ export function RoundTrack({ state, variant = "host", className }: { state: Even
               />
             </div>
             {variant !== "participant" && (
-              <div className={cn("mt-1.5 flex min-w-0 items-baseline justify-between gap-2", stage && "mt-2.5")}>
+              <div className={cn("mt-1.5 flex min-w-0 gap-x-2", stage ? "mt-2.5 items-baseline justify-between" : "flex-col")}>
                 <span
                   className={cn(
                     "truncate",
@@ -60,7 +60,7 @@ export function RoundTrack({ state, variant = "host", className }: { state: Even
                 >
                   {shortName(round)}
                 </span>
-                <span className={cn("shrink-0 font-mono", stage ? "text-[24px] leading-8" : "text-[11px]", s === "now" ? "text-accent-text" : "text-fg-muted")}>{timeLabel(round)}</span>
+                <span className={cn("shrink-0 font-mono", stage ? "text-[24px] leading-8" : "text-[12px] leading-4", s === "now" ? "text-accent-text" : "text-fg-muted")}>{timeLabel(round)}</span>
               </div>
             )}
             <span className="sr-only">{s === "done" ? "finished" : s === "now" ? "in progress" : "upcoming"}</span>

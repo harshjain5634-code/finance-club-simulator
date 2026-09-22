@@ -54,42 +54,48 @@ export function participantTitle(pathname: string, code: string): string {
   return item?.label ?? "Dashboard";
 }
 
-export function hostNav(eventId: string): NavGroup[] {
+/**
+ * C4 host rail groups (section 13): LIVE is what a host touches every minute, OPS is reference during the event,
+ * SETUP is before and after it. Event setup covers every /setup/* page (they share a tab strip).
+ */
+export function hostRailNav(eventId: string): NavGroup[] {
   const base = `/host/events/${eventId}`;
   return [
     {
       label: "Live",
       items: [
-        { label: "Control Room", href: base, icon: Gauge, exact: true },
+        { label: "Control room", href: base, icon: Gauge, exact: true },
+        { label: "News desk", href: `${base}/news`, icon: Newspaper },
         { label: "Trades", href: `${base}/trades`, icon: ArrowLeftRight, badgeKey: "approvals" },
-        { label: "News", href: `${base}/news`, icon: Newspaper },
-        { label: "Teams", href: `${base}/teams`, icon: Users },
+        { label: "Projector", href: `${base}/display`, icon: MonitorPlay },
       ],
     },
     {
-      label: "Market",
+      label: "Ops",
       items: [
-        { label: "Prices", href: `${base}/prices`, icon: TrendingUp },
+        { label: "Teams", href: `${base}/teams`, icon: Users },
+        { label: "Market", href: `${base}/prices`, icon: TrendingUp },
         { label: "Leaderboard", href: `${base}/leaderboard`, icon: Medal },
+        { label: "Audit log", href: `${base}/audit`, icon: ClipboardList },
       ],
     },
     {
       label: "Setup",
       items: [
-        { label: "Event Settings", href: `${base}/setup/general`, icon: Settings2 },
-        { label: "Instruments", href: `${base}/setup/instruments`, icon: ChartCandlestick },
-        { label: "Allocations", href: `${base}/setup/allocations`, icon: ChartPie },
-        { label: "Rounds", href: `${base}/setup/rounds`, icon: Timer },
-        { label: "Projector", href: `${base}/display`, icon: MonitorPlay },
-      ],
-    },
-    {
-      label: "Records",
-      items: [
-        { label: "Audit", href: `${base}/audit`, icon: ClipboardList },
+        { label: "Event setup", href: `${base}/setup`, icon: Settings2 },
         { label: "Exports", href: `${base}/exports`, icon: Download },
       ],
     },
+  ];
+}
+
+export function hostSetupTabs(eventId: string): NavItem[] {
+  const base = `/host/events/${eventId}/setup`;
+  return [
+    { label: "General", href: `${base}/general`, icon: Settings2 },
+    { label: "Stocks", href: `${base}/instruments`, icon: ChartCandlestick },
+    { label: "Allocations", href: `${base}/allocations`, icon: ChartPie },
+    { label: "Rounds", href: `${base}/rounds`, icon: Timer },
   ];
 }
 

@@ -352,7 +352,7 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
-  .overline {
+  .eyebrow {
     font-size: var(--text-overline);
     line-height: var(--text-overline--line-height);
     font-weight: 600;
