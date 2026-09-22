@@ -21,6 +21,9 @@ type SelectProps = {
 
 /** Radix Select: keyboard accessible, portal-rendered, styled with our tokens. */
 export function Select({ value, onValueChange, options, placeholder = "Select…", id, disabled, className, size = "md", ...rest }: SelectProps) {
+  // C4 shows the selected option's hint on the trigger too (e.g. "last ₹860.00", "#1 · online"),
+  // so the useful detail is visible without opening the menu.
+  const selected = options.find((option) => option.value === value);
   return (
     <RadixSelect.Root value={value} onValueChange={onValueChange} disabled={disabled}>
       <RadixSelect.Trigger
@@ -35,6 +38,7 @@ export function Select({ value, onValueChange, options, placeholder = "Select…
         <span className="min-w-0 truncate">
           <RadixSelect.Value placeholder={placeholder} />
         </span>
+        {selected?.hint && <span className="ml-auto max-w-[45%] shrink-0 truncate text-caption text-fg-muted">{selected.hint}</span>}
         <RadixSelect.Icon>
           <ChevronDown className="size-4 text-fg-muted" />
         </RadixSelect.Icon>

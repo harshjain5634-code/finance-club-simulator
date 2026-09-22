@@ -16,17 +16,18 @@ export type ChartPalette = {
   primary: string;
 };
 
+/** Mirrors the participant-light tokens in app/globals.css; used only before the CSS variables resolve. */
 const FALLBACK: ChartPalette = {
   accent: "#2f4bdb",
-  positive: "#087f63",
-  negative: "#c93a24",
+  positive: "#07775d",
+  negative: "#c33620",
   warning: "#a35a00",
   grid: "#eeeeea",
-  axis: "#6b7079",
+  axis: "#60656e",
   cursor: "#d0cfc8",
   canvas: "#f5f5f2",
   surface: "#ffffff",
-  muted: "#6b7079",
+  muted: "#60656e",
   primary: "#111318",
 };
 
