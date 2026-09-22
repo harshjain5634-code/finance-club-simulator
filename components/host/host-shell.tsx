@@ -32,7 +32,7 @@ import { nextPendingRound, readiness } from "@/lib/domain/lifecycle";
 import { activeTakeover, resolveProjectorScene, SCENE_LABEL } from "@/lib/domain/projector";
 import type { EventState } from "@/lib/domain/types";
 import { formatClock, formatDuration, formatMinutes } from "@/lib/format";
-import { hostRailNav, hostSetupTabs, isActive, type NavGroup } from "@/lib/navigation";
+import { hostRailNav, isActive, type NavGroup } from "@/lib/navigation";
 import { useEventById } from "@/lib/mock/hooks";
 import { useOnlineTeams } from "@/lib/mock/runtime";
 import { HOST_NAME } from "@/lib/mock/store";
@@ -90,13 +90,11 @@ export function HostEventShell({ children }: { children: ReactNode }) {
 }
 
 function HostFrame({ state, children }: { state: EventState; children: ReactNode }) {
-  const pathname = usePathname();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const nav = hostRailNav(state.event.id);
   const badges = { approvals: state.proposals.filter((p) => p.status === "PENDING_APPROVAL").length };
-  const inSetup = pathname.startsWith(`${hostBase(state.event.id)}/setup`);
   useHostShortcuts({ state, openPalette: () => setPaletteOpen((o) => !o), openHelp: () => setHelpOpen(true) });
 
   return (
@@ -111,7 +109,6 @@ function HostFrame({ state, children }: { state: EventState; children: ReactNode
       <div className="flex min-h-dvh flex-col">
         <MobileHeader state={state} nav={nav} badges={badges} open={navOpen} onOpenChange={setNavOpen} onPalette={() => setPaletteOpen(true)} />
         <LiveControlStrip state={state} onPalette={() => setPaletteOpen(true)} />
-        {inSetup && <SetupTabs eventId={state.event.id} />}
         <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-4 focus:outline-none">
           {children}
         </main>
@@ -254,31 +251,6 @@ function MobileHeader({
         <Command className="size-4" />
       </Button>
     </header>
-  );
-}
-
-function SetupTabs({ eventId }: { eventId: string }) {
-  const pathname = usePathname();
-  return (
-    <nav aria-label="Event setup" className="border-b border-border bg-surface">
-      <ul className="mx-auto flex max-w-[1760px] gap-1 overflow-x-auto px-4">
-        {hostSetupTabs(eventId).map((tab) => {
-          const active = isActive(pathname, tab);
-          return (
-            <li key={tab.href}>
-              <Link
-                href={tab.href}
-                aria-current={active ? "page" : undefined}
-                className={cn("relative flex h-11 items-center px-3 text-[14px] font-medium", active ? "text-fg-primary" : "text-fg-secondary hover:text-fg-primary")}
-              >
-                {tab.label}
-                {active && <span aria-hidden className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-accent" />}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
   );
 }
 

@@ -5,6 +5,7 @@ import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog";
 import { Field, Input } from "@/components/ui/field";
 import { nextPendingRound, readiness } from "@/lib/domain/lifecycle";
 import { activeTakeover } from "@/lib/domain/projector";
+import { setupIssues } from "@/lib/domain/setup-checks";
 import { currentRound, roundRemainingMs } from "@/lib/domain/trading-gate";
 import type { EventState, NewsItem, OpResult } from "@/lib/domain/types";
 import { formatDuration, formatMinutes } from "@/lib/format";
@@ -86,6 +87,7 @@ export function HostCommandsProvider({ state, children }: { state: EventState; c
   const live = event.status === "LIVE" || event.status === "PAUSED";
   const setup = event.status === "DRAFT" || event.status === "READY";
   const blockers = readiness(state).filter((i) => !i.done && i.id !== "news" && i.id !== "projector");
+  const mustFix = setup ? setupIssues(state).filter((i) => i.level === "MUST_FIX").length : 0;
   const nextStory = manualQueue(state)[0] ?? null;
   const takeover = activeTakeover(state, now);
   const latestRelease = state.newsReleases.length > 0;
@@ -100,7 +102,7 @@ export function HostCommandsProvider({ state, children }: { state: EventState; c
     startRound: event.status === "LIVE" && !roundActive && !!upcoming,
     endRound: event.status === "LIVE" && roundActive,
     nextRound: event.status === "LIVE" && roundActive && !!upcoming,
-    startEvent: setup && blockers.length === 0,
+    startEvent: setup && blockers.length === 0 && mustFix === 0,
     pauseEvent: event.status === "LIVE",
     resumeEvent: event.status === "PAUSED",
     endEvent: live,
@@ -117,7 +119,7 @@ export function HostCommandsProvider({ state, children }: { state: EventState; c
     { id: "startRound", group: "Actions", label: upcoming?.type === "BRIEFING" ? "Start briefing" : `Start Round ${upcoming?.number ?? ""}`.trim(), hint: upcoming ? `${upcoming.name} · ${formatMinutes(upcoming.durationSeconds)} · asks to confirm` : "", confirms: true },
     { id: "endRound", group: "Actions", label: `End Round ${round?.number ?? ""}`.trim(), hint: `${remaining ? `${remaining} left · ` : ""}asks to confirm`, shortcut: "E", confirms: true, tone: "warning" },
     { id: "nextRound", group: "Actions", label: `End Round ${round?.number ?? ""} & start Round ${upcoming?.number ?? ""}`, hint: "ends the current round first · asks to confirm", confirms: true },
-    { id: "startEvent", group: "Actions", label: "Start event", hint: blockers.length ? `finish setup first` : "go live for every team", confirms: true },
+    { id: "startEvent", group: "Actions", label: "Start event", hint: blockers.length || mustFix ? "finish setup first (see Review)" : "go live for every team", confirms: true },
     { id: "pauseEvent", group: "Actions", label: "Pause event", hint: "stops the clock and all trading", confirms: true },
     { id: "resumeEvent", group: "Actions", label: "Resume event", hint: "clock and trading continue", shortcut: "P", confirms: false },
     { id: "endEvent", group: "Actions", label: "End event…", hint: "publishes final results · type the code to confirm", confirms: true, tone: "warning" },
