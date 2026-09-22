@@ -309,6 +309,8 @@ export type NewsItem = {
   createdAt: number;
   updatedAt: number;
   releaseId: string | null;
+  /** Host-scheduled release time (stays READY until released). Held while the event is paused or trading is frozen. */
+  scheduledFor?: number | null;
 };
 
 export type ResolvedImpact = {
@@ -442,6 +444,8 @@ export type AuditType =
   | "NEWS_UPDATED"
   | "NEWS_SKIPPED"
   | "NEWS_RELEASED"
+  | "NEWS_SCHEDULED"
+  | "NEWS_UNSCHEDULED"
   | "PRICE_CHANGED"
   | "CASH_ADJUSTED"
   | "HOLDING_ADJUSTED"

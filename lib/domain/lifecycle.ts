@@ -3,6 +3,7 @@ import { createStandingMark, computeLeaderboard } from "./leaderboard";
 import { formatPrice } from "./money";
 import { recordValuation } from "./portfolio";
 import { recordPriceChange } from "./prices";
+import { tickRandomNews } from "./random-news";
 import { currentRound, roundRemainingMs } from "./trading-gate";
 import type { EventState, OpContext, OpResult, Round } from "./types";
 import { fail, ok } from "./types";
@@ -261,6 +262,8 @@ export function freezeTrading(state: EventState, ctx: OpContext, note: string | 
     after: { tradingFrozen: true },
     refs: {},
   });
+  // Random news pauses with trading: hold its countdown now rather than on the next scheduler tick.
+  tickRandomNews(state, ctx);
   return ok();
 }
 
@@ -277,6 +280,8 @@ export function unfreezeTrading(state: EventState, ctx: OpContext): OpResult {
     after: { tradingFrozen: false },
     refs: {},
   });
+  // Resume the held random-news countdown (still respecting the minimum gap since the last story).
+  tickRandomNews(state, ctx);
   return ok();
 }
 

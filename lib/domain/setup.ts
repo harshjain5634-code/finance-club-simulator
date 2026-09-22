@@ -504,6 +504,8 @@ export function saveNewsItem(state: EventState, ctx: OpContext, newsItemId: stri
     if (!item) return fail("NOT_FOUND", "News item not found.");
     if (item.status === "RELEASED") return fail("LOCKED", "Released news cannot be edited.");
     Object.assign(item, { ...draft, headline: draft.headline.trim(), body: draft.body.trim(), impacts, updatedAt: ctx.now });
+    // A schedule only applies to a Ready story; moving it back to draft cancels it so it can't fire later by surprise.
+    if (item.status !== "READY") item.scheduledFor = null;
     appendAudit(state, {
       at: ctx.now,
       actor: ctx.actor,

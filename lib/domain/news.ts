@@ -189,6 +189,7 @@ export function skipNews(state: EventState, ctx: OpContext, newsItemId: string):
   if (item.status === "RELEASED") return fail("ALREADY_RELEASED", "Released news cannot be skipped.");
   if (item.status === "SKIPPED") return ok(item);
   item.status = "SKIPPED";
+  item.scheduledFor = null;
   item.updatedAt = ctx.now;
   appendAudit(state, {
     at: ctx.now,

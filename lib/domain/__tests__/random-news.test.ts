@@ -185,3 +185,48 @@ describe("random news scheduling", () => {
     expect(state.randomNews.scheduledNewsId).not.toBe("news-02");
   });
 });
+
+describe("random news while trading is frozen", () => {
+  it("holds the countdown on freeze and resumes it with the same time left after unfreeze", () => {
+    const state = randomEvent({ random: () => 0 });
+    expect(state.randomNews.nextReleaseAt).toBe(START + 120 * SEC);
+
+    expectOk(lifecycle.freezeTrading(state, ctx(START + 50 * SEC), "test"));
+    expect(state.randomNews.nextReleaseAt).toBeNull();
+    expect(state.randomNews.heldRemainingMs).toBe(70 * SEC);
+    expect(state.randomNews.status).toBe("RUNNING");
+    expect(state.audit.at(-1)).toMatchObject({ type: "NEWS_RANDOM_PAUSED", actor: { type: "SYSTEM" } });
+    expect(state.audit.at(-1)!.summary).toContain("trading is frozen");
+    expect(randomNewsView(state, START + 60 * SEC).message).toContain("frozen");
+
+    // Long past the original due time: nothing goes out while frozen.
+    expect(tick(state, START + 600 * SEC).release).toBeNull();
+    expect(state.newsReleases).toHaveLength(0);
+
+    expectOk(lifecycle.unfreezeTrading(state, ctx(START + 700 * SEC)));
+    expect(state.randomNews.nextReleaseAt).toBe(START + 770 * SEC);
+    expect(state.audit.at(-1)).toMatchObject({ type: "NEWS_RANDOM_RESUMED" });
+    expect(tick(state, START + 769 * SEC).release).toBeNull();
+    expect(tick(state, START + 770 * SEC).release).not.toBeNull();
+    expect(state.newsReleases).toHaveLength(1);
+  });
+
+  it("keeps the minimum gap after an unfreeze", () => {
+    const state = randomEvent({ random: () => 0 });
+    const first = tick(state, START + 120 * SEC).release!;
+    expect(first).not.toBeNull();
+    const releasedAt = first.releasedAt;
+    // Freeze almost immediately; the held countdown is ~120 s but a quick unfreeze must still honour the gap.
+    expectOk(lifecycle.freezeTrading(state, ctx(releasedAt + 1 * SEC), null));
+    state.randomNews.heldRemainingMs = 0;
+    expectOk(lifecycle.unfreezeTrading(state, ctx(releasedAt + 5 * SEC)));
+    expect(state.randomNews.nextReleaseAt).toBeGreaterThanOrEqual(releasedAt + 120 * SEC);
+    expect(tick(state, releasedAt + 119 * SEC).release).toBeNull();
+  });
+
+  it("does not need a scheduler tick while frozen once the countdown is held", () => {
+    const state = randomEvent({ random: () => 0 });
+    expectOk(lifecycle.freezeTrading(state, ctx(START + 10 * SEC), null));
+    expect(randomNewsNeedsTick(state, START + 500 * SEC)).toBe(false);
+  });
+});

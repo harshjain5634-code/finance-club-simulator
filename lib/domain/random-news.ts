@@ -1,4 +1,4 @@
-import { formatClock, formatGapRange } from "../format";
+import { formatClock, formatDuration, formatGapRange } from "../format";
 import { appendAudit } from "./audit";
 import { nextId } from "./ids";
 import { releaseNews } from "./news";
@@ -10,7 +10,8 @@ import { fail, ok } from "./types";
  * Random news release mode. The host chooses the eligible pool and a [min, max] gap; the scheduler picks one
  * unused eligible story at a time and releases it at a random moment inside the gap. Safety rules:
  * - never two releases closer than minGapSeconds (measured from the latest release of any kind)
- * - only while the event is live and the round is running (and matches the eligible round)
+ * - only while the event is live, trading is not frozen, and the round is running (and matches the eligible round)
+ * - while blocked (paused event, frozen trading, no running round) the countdown is held and resumes afterwards
  * - only stories that are READY, unreleased, in the pool, and within the per-round limit
  * - exactly one scheduled release at a time; the schedule is held while blocked or paused
  */
@@ -43,10 +44,18 @@ export function randomReleasesInRound(state: EventState, roundId: string): numbe
   return state.newsReleases.filter((r) => r.source === "RANDOM" && r.roundId === roundId).length;
 }
 
-export type BlockReason = "EVENT_NOT_LIVE" | "NO_RUNNING_ROUND" | "ROUND_NOT_ELIGIBLE";
+export type BlockReason = "EVENT_NOT_LIVE" | "TRADING_FROZEN" | "NO_RUNNING_ROUND" | "ROUND_NOT_ELIGIBLE";
+
+const BLOCK_TEXT: Record<BlockReason, string> = {
+  EVENT_NOT_LIVE: "the event is not live",
+  TRADING_FROZEN: "trading is frozen",
+  NO_RUNNING_ROUND: "no round is running",
+  ROUND_NOT_ELIGIBLE: "this round is not in scope",
+};
 
 export function blockReason(state: EventState, now: number): BlockReason | null {
   if (state.event.status !== "LIVE") return "EVENT_NOT_LIVE";
+  if (state.event.tradingFrozen) return "TRADING_FROZEN";
   const round = currentRound(state);
   if (!round || round.status !== "RUNNING" || roundRemainingMs(round, now) <= 0) return "NO_RUNNING_ROUND";
   const scope = state.randomNews.roundScope;
@@ -60,7 +69,7 @@ export function eligibleRandomStories(state: EventState): NewsItem[] {
   if (!round) return [];
   const settings = state.randomNews;
   return state.news
-    .filter((item) => item.status === "READY" && !item.releaseId)
+    .filter((item) => item.status === "READY" && !item.releaseId && item.scheduledFor == null)
     .filter((item) => !settings.excludedNewsIds.includes(item.id))
     .filter((item) => item.roundId === round.id || (settings.includeUnassigned && item.roundId === null))
     .sort((a, b) => a.number - b.number);
@@ -137,6 +146,14 @@ export function tickRandomNews(state: EventState, ctx: OpContext): RandomTickRes
     if (settings.nextReleaseAt !== null) {
       settings.heldRemainingMs = Math.max(0, settings.nextReleaseAt - ctx.now);
       settings.nextReleaseAt = null;
+      appendAudit(state, {
+        at: ctx.now,
+        actor: { type: "SYSTEM", name: "Random news" },
+        type: "NEWS_RANDOM_PAUSED",
+        summary: `Random news held: ${BLOCK_TEXT[blocked]} (${formatDuration(settings.heldRemainingMs)} left on the countdown)`,
+        after: { heldRemainingMs: settings.heldRemainingMs, reason: blocked },
+        refs: settings.scheduledNewsId ? { newsItemId: settings.scheduledNewsId } : {},
+      });
       return { changed: true, release: null };
     }
     return { changed: false, release: null };
@@ -164,6 +181,14 @@ export function tickRandomNews(state: EventState, ctx: OpContext): RandomTickRes
       const earliest = last === null ? ctx.now : last + settings.minGapSeconds * 1000;
       settings.nextReleaseAt = Math.max(ctx.now + settings.heldRemainingMs, earliest);
       settings.heldRemainingMs = null;
+      appendAudit(state, {
+        at: ctx.now,
+        actor: { type: "SYSTEM", name: "Random news" },
+        type: "NEWS_RANDOM_RESUMED",
+        summary: `Random news countdown resumed: next story at ${formatClock(settings.nextReleaseAt, true)}`,
+        after: { nextReleaseAt: settings.nextReleaseAt },
+        refs: settings.scheduledNewsId ? { newsItemId: settings.scheduledNewsId } : {},
+      });
       return { changed: true, release: null };
     }
     const scheduled = scheduleNext(state, ctx);
@@ -198,9 +223,11 @@ export function tickRandomNews(state: EventState, ctx: OpContext): RandomTickRes
 }
 
 /** Manual host release: keeps the random schedule consistent with the minimum gap. */
-export function releaseNewsManually(state: EventState, ctx: OpContext, newsItemId: string): OpResult<NewsRelease> {
-  const result = releaseNews(state, ctx, newsItemId);
+export function releaseNewsManually(state: EventState, ctx: OpContext, newsItemId: string, options: { scheduledFor?: number | null } = {}): OpResult<NewsRelease> {
+  const result = releaseNews(state, ctx, newsItemId, { source: "MANUAL", scheduledFor: options.scheduledFor ?? null });
   if (!result.ok) return result;
+  const released = state.news.find((n) => n.id === newsItemId);
+  if (released) released.scheduledFor = null;
   const settings = state.randomNews;
   if (settings.mode === "RANDOM" && settings.status === "RUNNING") {
     if (settings.nextReleaseAt !== null && settings.nextReleaseAt < ctx.now + settings.minGapSeconds * 1000) {
@@ -391,6 +418,7 @@ export function randomNewsView(state: EventState, now: number): RandomNewsView {
   if (settings.status === "PAUSED") return { ...base, phase: "PAUSED", message: "Paused by host. The countdown is held." };
   const blocked = blockReason(state, now);
   if (blocked === "EVENT_NOT_LIVE") return { ...base, phase: "BLOCKED", message: state.event.status === "PAUSED" ? "Waiting: the event is paused." : "Waiting for the event to go live." };
+  if (blocked === "TRADING_FROZEN") return { ...base, phase: "BLOCKED", message: "Held while trading is frozen. The countdown resumes when you unfreeze." };
   if (blocked === "NO_RUNNING_ROUND") return { ...base, phase: "BLOCKED", message: "Waiting for a running round." };
   if (blocked === "ROUND_NOT_ELIGIBLE") return { ...base, phase: "BLOCKED", message: "Waiting for the eligible round." };
   if (round && releasedThisRound >= settings.maxPerRound) return { ...base, phase: "LIMIT_REACHED", message: `Round limit reached (${settings.maxPerRound} stories).` };

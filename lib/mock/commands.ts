@@ -6,6 +6,7 @@ import { createEventState, slug } from "@/lib/domain/event-state";
 import { nextId } from "@/lib/domain/ids";
 import * as lifecycle from "@/lib/domain/lifecycle";
 import * as news from "@/lib/domain/news";
+import * as newsSchedule from "@/lib/domain/news-schedule";
 import * as p2p from "@/lib/domain/p2p";
 import { actorCan, type Permission } from "@/lib/domain/permissions";
 import * as portfolio from "@/lib/domain/portfolio";
@@ -142,6 +143,10 @@ export const releaseNews = (eventId: string, newsItemId: string, key?: string) =
 
 /* ───────────── Random news mode ───────────── */
 
+export const scheduleNews = (eventId: string, newsItemId: string, at: number) =>
+  runEventCommand(eventId, host(), "news.release", "scheduleNews", (s, c) => newsSchedule.scheduleNewsRelease(s, c, newsItemId, at));
+export const unscheduleNews = (eventId: string, newsItemId: string) =>
+  runEventCommand(eventId, host(), "news.release", "unscheduleNews", (s, c) => newsSchedule.unscheduleNewsRelease(s, c, newsItemId));
 export const setNewsReleaseMode = (eventId: string, mode: "MANUAL" | "RANDOM") =>
   runEventCommand(eventId, host(), "news.release", "setNewsReleaseMode", (s, c) => randomNews.setRandomNewsMode(s, c, mode));
 
@@ -338,7 +343,8 @@ export function runScheduledWork(eventId: string): Promise<OpResult<{ expired: n
     const roundEnded = lifecycle.endRoundIfExpired(s, c);
     const expired = p2p.expireDueProposals(s, c);
     const random = randomNews.tickRandomNews(s, c);
-    if (!roundEnded && expired === 0 && !random.changed) return fail("NOTHING_DUE", "Nothing due.");
-    return ok({ expired, roundEnded, newsReleased: random.release !== null });
+    const scheduled = newsSchedule.tickScheduledNews(s, c);
+    if (!roundEnded && expired === 0 && !random.changed && !scheduled) return fail("NOTHING_DUE", "Nothing due.");
+    return ok({ expired, roundEnded, newsReleased: random.release !== null || scheduled !== null });
   });
 }
