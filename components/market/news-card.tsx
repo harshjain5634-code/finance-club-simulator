@@ -98,7 +98,7 @@ export function NewsCard({
               ))}
               <span className="text-fg-muted">{meta.symbols.length === 1 ? "Affected company" : "Affected companies"}</span>
               {meta.symbols.length === 1 && (
-                <Link href={href ?? `/event/${code}/markets/${meta.symbols[0]}`} className="ml-auto inline-flex items-center gap-1 font-medium text-accent-text hover:underline">
+                <Link href={href ?? `/event/${code}/markets/${meta.symbols[0]}`} className="tap-target ml-auto inline-flex items-center gap-1 font-medium text-accent-text hover:underline">
                   View {meta.symbols[0]} <ArrowRight className="size-3" aria-hidden />
                 </Link>
               )}

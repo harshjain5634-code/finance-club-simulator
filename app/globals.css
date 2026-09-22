@@ -359,6 +359,14 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
+  /* Small inline links are fine to read but too small to tap: give them a 24px+ hit area on touch devices
+     (C4 section 21 targets) without changing how they sit in the layout. */
+  @media (pointer: coarse) {
+    .tap-target {
+      padding-block: 0.5rem;
+      margin-block: -0.5rem;
+    }
+  }
   .skeleton {
     background: linear-gradient(90deg, var(--color-canvas-subtle) 25%, var(--color-surface-hover) 50%, var(--color-canvas-subtle) 75%);
     background-size: 200% 100%;

@@ -33,6 +33,23 @@ import { cn } from "@/lib/utils";
 import { hostAction, hostBase } from "./host-context";
 import { useHostCommands, type HostCommandId } from "./host-commands";
 
+/**
+ * Remembers what was focused before a shortcut-opened dialog appeared and puts focus back afterwards, so a
+ * keyboard-only host never loses their place (C4 section 21: dialogs trap focus and return it).
+ */
+function useReturnFocus(open: boolean) {
+  const previous = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (open) previous.current = document.activeElement as HTMLElement | null;
+  }, [open]);
+  return (event: Event) => {
+    const target = previous.current;
+    if (!target || !target.isConnected || target === document.body) return;
+    event.preventDefault();
+    target.focus({ preventScroll: true });
+  };
+}
+
 type Item = { key: string; group: string; icon: LucideIcon; label: string; hint?: string; keys?: string[]; tone?: "warning"; run: () => void };
 
 const COMMAND_ICON: Record<HostCommandId, LucideIcon> = {
@@ -72,6 +89,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const { state, commands, available, run } = useHostCommands();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const returnFocus = useReturnFocus(open);
   const listRef = useRef<HTMLDivElement>(null);
   const eventId = state.event.id;
   const base = hostBase(eventId);
@@ -169,6 +187,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-overlay animate-fade-in" />
         <RadixDialog.Content
           aria-label="Command palette"
+          onCloseAutoFocus={returnFocus}
           className="fixed top-24 left-1/2 z-50 flex max-h-[min(640px,calc(100dvh-8rem))] w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-border-strong bg-surface-raised shadow-dialog animate-pop-in focus:outline-none"
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
@@ -270,11 +289,12 @@ function Row({ keys, children }: { keys: string[]; children: ReactNode }) {
 
 /** "?" sheet listing every host shortcut. */
 export function ShortcutsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const returnFocus = useReturnFocus(open);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-overlay animate-fade-in" />
-        <RadixDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border-strong bg-surface-raised p-6 shadow-dialog animate-pop-in focus:outline-none">
+        <RadixDialog.Content onCloseAutoFocus={returnFocus} className="fixed top-1/2 left-1/2 z-50 w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border-strong bg-surface-raised p-6 shadow-dialog animate-pop-in focus:outline-none">
           <div className="flex items-start justify-between">
             <div>
               <RadixDialog.Title className="text-h2 font-semibold text-fg-primary">Keyboard shortcuts</RadixDialog.Title>

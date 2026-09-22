@@ -410,7 +410,7 @@ export function DashboardScreen() {
           action={
             <Link
               href={`/event/${code}/portfolio`}
-              className="inline-flex items-center gap-1 text-caption font-medium text-accent-text hover:underline"
+              className="tap-target inline-flex items-center gap-1 text-caption font-medium text-accent-text hover:underline"
             >
               Portfolio <ArrowRight className="size-3" aria-hidden />
             </Link>
@@ -550,7 +550,7 @@ export function DashboardScreen() {
               </h2>
               <Link
                 href={`/event/${code}/news`}
-                className="inline-flex items-center gap-1 text-[13px] font-medium text-accent-text hover:underline"
+                className="tap-target inline-flex items-center gap-1 text-[13px] font-medium text-accent-text hover:underline"
               >
                 All news <ArrowRight className="size-3.5" aria-hidden />
               </Link>

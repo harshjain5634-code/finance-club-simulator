@@ -61,7 +61,7 @@ export function TerminalShell({ children }: { children: ReactNode }) {
           title={`No event with code ${code}`}
           description="Check the event code with your host."
           action={
-            <Link href="/join" className="text-[13px] text-accent-text hover:underline">
+            <Link href="/join" className="tap-target text-[13px] text-accent-text hover:underline">
               Enter a different code
             </Link>
           }

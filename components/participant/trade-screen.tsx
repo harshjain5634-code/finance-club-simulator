@@ -284,7 +284,7 @@ function ProposalTicket({
               <X /> Cancel counter
             </Button>
           ) : (
-            <span className="inline-flex h-7 items-center gap-1.5 rounded-sm bg-canvas-subtle px-2.5 text-caption font-medium text-fg-secondary">
+            <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-sm bg-canvas-subtle px-2.5 text-caption font-medium whitespace-nowrap text-fg-secondary">
               <ArrowLeftRight className="size-3.5" aria-hidden /> Peer-to-peer
             </span>
           )}
@@ -379,7 +379,7 @@ function ProposalTicket({
                 <label htmlFor="trade-price" className="text-[13px] font-medium text-fg-primary">
                   Price per share
                 </label>
-                <button type="button" onClick={() => setPrice(reference)} className="rounded-xs text-caption font-medium text-accent-text hover:underline">
+                <button type="button" onClick={() => setPrice(reference)} className="tap-target rounded-xs text-caption font-medium text-accent-text hover:underline">
                   Use last price
                 </button>
               </div>

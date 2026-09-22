@@ -157,7 +157,7 @@ export function PortfolioScreen() {
               <h2 className="text-h3 font-semibold text-fg-primary">Recent activity</h2>
               <p className="text-caption text-fg-muted">Trades that changed your holdings or cash</p>
             </div>
-            <Link href={`/event/${code}/transactions`} className="inline-flex items-center gap-1 text-[13px] font-medium text-accent-text hover:underline">
+            <Link href={`/event/${code}/transactions`} className="tap-target inline-flex items-center gap-1 text-[13px] font-medium text-accent-text hover:underline">
               All transactions <ArrowRight className="size-3.5" aria-hidden />
             </Link>
           </div>
