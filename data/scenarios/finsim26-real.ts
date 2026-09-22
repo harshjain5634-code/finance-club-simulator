@@ -97,7 +97,7 @@ export function finsim26RealConfig(timing: ScenarioTiming = "STANDARD"): EventCo
     newsMode: "MANUAL",
     capitalRule: "SAME",
     defaultStartingCash: rupees(501877.5),
-    themePolicy: "FORCE_DARK",
+    themePolicy: "PARTICIPANT_CHOICE",
     rules: DEFAULT_RULES,
     teams: DEMO_TEAMS,
     instruments: SYMBOLS.map((symbol) => catalogueInstrument(REAL_CATALOGUE.find((c) => c.symbol === symbol)!)),

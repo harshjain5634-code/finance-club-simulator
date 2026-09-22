@@ -250,7 +250,7 @@ export function finsim26CustomConfig(timing: ScenarioTiming = "STANDARD"): Event
     newsMode: "MANUAL",
     capitalRule: "SAME",
     defaultStartingCash: rupees(505200),
-    themePolicy: "FORCE_DARK",
+    themePolicy: "PARTICIPANT_CHOICE",
     rules: DEFAULT_RULES,
     teams: DEMO_TEAMS,
     instruments: customInstruments(),

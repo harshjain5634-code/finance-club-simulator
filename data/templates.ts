@@ -36,7 +36,7 @@ export function blankConfig(): EventConfig {
     newsMode: "MANUAL",
     capitalRule: "SAME",
     defaultStartingCash: rupees(1000000),
-    themePolicy: "FORCE_DARK",
+    themePolicy: "PARTICIPANT_CHOICE",
     rules: DEFAULT_RULES,
     teams: [],
     instruments: [],

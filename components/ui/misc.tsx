@@ -101,7 +101,8 @@ export function PageHeader({ title, description, actions, meta, className }: { t
     <div className={cn("flex flex-wrap items-end justify-between gap-x-4 gap-y-3", className)}>
       <div className="min-w-0">
         {meta && <div className="mb-1.5 flex flex-wrap items-center gap-2">{meta}</div>}
-        <h1 className="text-h1 font-semibold tracking-[-0.01em] text-fg-primary">{title}</h1>
+        {/* On phones the sticky header already names the page, so the heading stays for screen readers only. */}
+        <h1 className="text-h1 font-semibold tracking-[-0.01em] text-fg-primary max-md:sr-only">{title}</h1>
         {description && <p className="mt-1 max-w-3xl text-meta text-fg-secondary">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

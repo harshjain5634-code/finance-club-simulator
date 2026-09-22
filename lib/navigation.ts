@@ -29,8 +29,8 @@ export function participantNav(code: string): NavGroup[] {
       items: [
         { label: "Dashboard", href: `${base}/dashboard`, icon: LayoutDashboard },
         { label: "Markets", href: `${base}/markets`, icon: ChartCandlestick },
-        { label: "Trade", href: `${base}/trade`, icon: ArrowLeftRight, badgeKey: "incoming" },
         { label: "Portfolio", href: `${base}/portfolio`, icon: BriefcaseBusiness },
+        { label: "Trade", href: `${base}/trade`, icon: ArrowLeftRight, badgeKey: "incoming" },
         { label: "News", href: `${base}/news`, icon: Newspaper, badgeKey: "news" },
         { label: "Leaderboard", href: `${base}/leaderboard`, icon: Medal },
       ],
@@ -39,7 +39,7 @@ export function participantNav(code: string): NavGroup[] {
       label: "More",
       items: [
         { label: "Transactions", href: `${base}/transactions`, icon: ReceiptText },
-        { label: "Rules", href: `${base}/rules`, icon: BookOpen },
+        { label: "Rules & help", href: `${base}/rules`, icon: BookOpen },
       ],
     },
   ];

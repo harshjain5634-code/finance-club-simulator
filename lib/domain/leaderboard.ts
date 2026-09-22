@@ -116,3 +116,33 @@ export function projectorLeaderboardRows(
   if (visibility === "HIDDEN") return null;
   return visibility === "TOP_N" ? rows.slice(0, topN) : rows;
 }
+
+export type SharedRank = { rank: number; tied: boolean; label: string };
+
+/**
+ * Presentation helper for tied standings. Ranking stays exactly as rankTeams computes it (unique, with the
+ * name tie-break), but teams whose return and net worth are identical share the first rank of their group
+ * and display it as "=7". The next team keeps its own position (so "=7, =7, 9").
+ */
+export function sharedRanks(rows: Pick<LeaderboardRow, "teamId" | "rank" | "netWorth" | "returnPct">[]): Record<string, SharedRank> {
+  const sorted = [...rows].sort((a, b) => a.rank - b.rank);
+  const result: Record<string, SharedRank> = {};
+  let index = 0;
+  while (index < sorted.length) {
+    let end = index + 1;
+    while (
+      end < sorted.length &&
+      Math.abs(sorted[end].returnPct - sorted[index].returnPct) < 1e-9 &&
+      sorted[end].netWorth === sorted[index].netWorth
+    ) {
+      end += 1;
+    }
+    const tied = end - index > 1;
+    const rank = sorted[index].rank;
+    for (let i = index; i < end; i += 1) {
+      result[sorted[i].teamId] = { rank, tied, label: tied ? `=${rank}` : `#${rank}` };
+    }
+    index = end;
+  }
+  return result;
+}
