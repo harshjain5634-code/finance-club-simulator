@@ -6,7 +6,7 @@ import { BrandMark } from "@/components/shell/brand";
 import { useRoundClock } from "@/components/market/round-clock";
 import { formatPct, formatPrice } from "@/lib/domain/money";
 import { activeTakeover, resolveProjectorScene, SCENE_LABEL, type ActiveTakeover } from "@/lib/domain/projector";
-import { MARKET_STATE_LABEL } from "@/lib/domain/trading-gate";
+import { MARKET_STATE_DISPLAY } from "@/components/market/status";
 import type { EventState, ProjectorScene } from "@/lib/domain/types";
 import { formatClock, formatDuration } from "@/lib/format";
 import { instrumentRows } from "@/lib/mock/selectors";
@@ -73,17 +73,19 @@ export function ProjectorStage({ state, joinUrl, preview = false, override = nul
             )}
           >
             <span className={cn("size-2.5 rounded-full bg-current", marketState === "OPEN" && "animate-pulse-dot")} />
-            {MARKET_STATE_LABEL[marketState]}
+            {MARKET_STATE_DISPLAY[marketState]}
           </span>
           {marketState !== "NOT_STARTED" && marketState !== "COMPLETED" && (
             <>
               <p className="text-[20px] font-semibold tracking-[0.06em] text-fg-primary uppercase">
                 {round ? `${roundLabel(state, round)} · ${round.name}` : "Between rounds"}
               </p>
+              {!(scene === "ROUND_STATUS" && !takeover) && (
               <p className="flex items-center gap-3" role="timer" aria-label="Time left in the round">
                 <TimerIcon className="size-8 text-fg-muted" aria-hidden />
                 <span className={cn("font-mono text-[56px] leading-none font-medium tabular-nums", !active ? "text-fg-muted" : round?.status === "RUNNING" && remaining <= 60_000 ? "text-warning" : "text-fg-primary")}>{active ? formatDuration(remaining) : "--:--"}</span>
               </p>
+              )}
             </>
           )}
         </div>

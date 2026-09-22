@@ -4,13 +4,14 @@ import type { ReactNode } from "react";
 import { Megaphone, Snowflake } from "lucide-react";
 import { BrandMark } from "@/components/shell/brand";
 import { Sparkline } from "@/components/ui/sparkline";
+import { RoundTrack } from "@/components/market/round-track";
 import { projectorLeaderboardRows, publishedLeaderboard, sharedRanks } from "@/lib/domain/leaderboard";
 import { nextPendingRound } from "@/lib/domain/lifecycle";
-import { formatINR, formatPct, formatPrice } from "@/lib/domain/money";
-import { MARKET_STATE_LABEL } from "@/lib/domain/trading-gate";
+import { formatCompactINR, formatINR, formatPct, formatPrice } from "@/lib/domain/money";
+import { MARKET_STATE_DISPLAY } from "@/components/market/status";
 import type { EventState, LeaderboardRow, MarketState, NewsRelease, ResolvedImpact, Round } from "@/lib/domain/types";
 import { formatClock, formatDuration, formatMinutes, formatRelative } from "@/lib/format";
-import { instrumentOf, instrumentRows, movers, releasesNewestFirst, type InstrumentRow } from "@/lib/mock/selectors";
+import { instrumentOf, instrumentRows, movers, releasesNewestFirst, tradingVolume, type InstrumentRow } from "@/lib/mock/selectors";
 import { cn } from "@/lib/utils";
 
 /*
@@ -57,7 +58,7 @@ export function SceneTitle({ eyebrow, title, aside }: { eyebrow: string; title: 
 export function StandbyScene({ state, marketState, joinUrl }: { state: EventState; marketState: MarketState; joinUrl: string }) {
   const next = nextPendingRound(state);
   const status =
-    marketState === "NOT_STARTED" ? "The event starts soon" : marketState === "BETWEEN_ROUNDS" ? (next ? `Up next · ${roundLabel(state, next)}: ${next.name}` : "All rounds complete") : MARKET_STATE_LABEL[marketState];
+    marketState === "NOT_STARTED" ? "The event starts soon" : marketState === "BETWEEN_ROUNDS" ? (next ? `Up next · ${roundLabel(state, next)}: ${next.name}` : "All rounds complete") : MARKET_STATE_DISPLAY[marketState];
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <BrandMark className="size-16 rounded-xl [&_svg]:size-9" />
@@ -87,51 +88,48 @@ export function RoundStatusScene({ state, marketState, remaining, elapsedPct, no
   const round = state.rounds.find((r) => r.id === state.event.currentRoundId);
   const active = round && (round.status === "RUNNING" || round.status === "PAUSED");
   const warning = marketState === "FROZEN" || marketState === "PAUSED";
-  const latest = releasesNewestFirst(state)[0];
+  const next = nextPendingRound(state);
+  const volume = tradingVolume(state, round?.id ?? null);
+  const activeTeams = state.teams.filter((t) => t.status === "ACTIVE").length;
+  void elapsedPct;
+  void now;
+
+  const tiles: { label: string; value: string }[] = [
+    { label: "Teams trading", value: `${activeTeams} of ${state.teams.length}` },
+    { label: "Trades this round", value: String(volume.count) },
+    { label: "Traded this round", value: formatCompactINR(volume.value) },
+    { label: "Next", value: next ? `${next.type === "BRIEFING" ? "Briefing" : `Round ${next.number}`} · ${formatMinutes(next.durationSeconds)}` : "Final results" },
+  ];
+
   return (
-    <div className="grid h-full grid-cols-[1.45fr_1fr] gap-14">
-      <div className="flex flex-col justify-center">
-        <p className="text-[22px] font-semibold tracking-[0.2em] text-accent-text uppercase">{roundLabel(state, round, true)}</p>
+    <div className="flex h-full flex-col">
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <p className="text-[22px] font-semibold tracking-[0.2em] text-fg-muted uppercase">{roundLabel(state, round, true)}</p>
         <h2 className="mt-2 text-[56px] leading-tight font-semibold tracking-tight text-fg-primary">{round?.name ?? state.event.name}</h2>
-        <p className={cn("mt-4 font-mono text-[200px] leading-none font-semibold tracking-tight tabular-nums", !active ? "text-fg-muted" : round?.status === "RUNNING" && remaining <= 60_000 ? "text-warning" : "text-fg-primary")}>
+        <p className={cn("mt-2 font-mono text-[190px] leading-none font-semibold tracking-tight tabular-nums", !active ? "text-fg-muted" : round?.status === "RUNNING" && remaining <= 60_000 ? "text-warning" : "text-fg-primary")}>
           {active ? formatDuration(remaining) : "--:--"}
         </p>
-        <div className="mt-8 h-3 w-full overflow-hidden rounded-full bg-surface-hover">
-          <div className={cn("h-full rounded-full transition-[width] duration-1000", warning ? "bg-warning" : "bg-accent")} style={{ width: `${round?.status === "ENDED" ? 100 : active ? elapsedPct : 0}%` }} />
-        </div>
-        <div className={cn("mt-8 inline-flex w-fit items-center gap-4 rounded-xl border-2 px-7 py-3.5 text-[28px] font-semibold", warning ? "border-warning/60 bg-warning/10 text-warning" : marketState === "OPEN" ? "border-accent/50 bg-accent/10 text-fg-primary" : "border-border-strong bg-surface text-fg-secondary")}>
-          {marketState === "FROZEN" ? <Snowflake className="size-8" /> : <span className={cn("size-4 rounded-full", marketState === "OPEN" ? "animate-pulse-dot bg-accent" : warning ? "bg-warning" : "bg-fg-muted")} />}
-          {marketState === "OPEN" ? "Trading open" : marketState === "FROZEN" ? "Trading frozen" : MARKET_STATE_LABEL[marketState]}
-        </div>
-      </div>
-      <div className="flex flex-col justify-center gap-6">
-        <div className="rounded-2xl border-2 border-border bg-surface px-8 py-6">
-          <p className="text-[16px] font-semibold tracking-[0.16em] text-fg-muted uppercase">Schedule</p>
-          <ol className="mt-3">
-            {state.rounds.map((r) => (
-              <li key={r.id} className={cn("flex items-center justify-between border-b border-border py-3 text-[22px] last:border-b-0", r.id === round?.id ? "text-fg-primary" : r.status === "ENDED" ? "text-fg-muted" : "text-fg-secondary")}>
-                <span className="flex items-center gap-3">
-                  <span className={cn("grid size-9 place-items-center rounded-lg text-[18px] font-bold tabular-nums", r.id === round?.id ? "bg-accent text-white" : "bg-surface-hover")}>{r.type === "BRIEFING" ? "B" : r.number}</span>
-                  {r.name}
-                </span>
-                <span className="text-[18px] tabular-nums">{r.status === "ENDED" ? "Done" : r.id === round?.id ? "Now" : formatMinutes(r.durationSeconds)}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-        {latest && (
-          <div className="rounded-2xl border-2 border-border bg-surface px-8 py-6">
-            <p className="text-[16px] font-semibold tracking-[0.16em] text-fg-muted uppercase">Latest news · {formatRelative(latest.releasedAt, now)}</p>
-            <p className="mt-2 line-clamp-2 text-[26px] leading-snug font-semibold text-fg-primary">{latest.headline}</p>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[20px]">
-              {latest.impacts.slice(0, 3).map((i) => (
-                <span key={i.instrumentId} className="tabular-nums">
-                  <span className="font-semibold text-fg-primary">{instrumentOf(state, i.instrumentId)?.symbol}</span> <span className={tone(i.appliedPct)}>{formatPct(i.appliedPct)}</span>
-                </span>
-              ))}
-            </div>
-          </div>
+        {warning ? (
+          <p className="mt-4 flex items-center gap-3 text-[28px] font-semibold text-warning">
+            <Snowflake className="size-8" />
+            {marketState === "FROZEN" ? "Trading frozen · the round clock keeps running" : "Paused by the host"}
+          </p>
+        ) : (
+          <p className="mt-4 text-[24px] text-fg-secondary">
+            {active && round?.endsAt ? `left · round ends at ${formatClock(round.endsAt)}` : marketState === "BETWEEN_ROUNDS" ? "waiting for the host to start the next round" : MARKET_STATE_DISPLAY[marketState]}
+          </p>
         )}
+      </div>
+
+      <RoundTrack state={state} variant="stage" className="shrink-0" />
+
+      <div className="mt-9 grid shrink-0 grid-cols-4 gap-5">
+        {tiles.map((tile) => (
+          <div key={tile.label} className="rounded-2xl bg-surface px-7 py-5">
+            <p className="text-[20px] text-fg-muted">{tile.label}</p>
+            <p className="mt-1 font-mono text-[34px] leading-tight font-medium text-fg-primary tabular-nums">{tile.value}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
