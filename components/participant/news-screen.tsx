@@ -188,7 +188,7 @@ function StoryPane({ releaseId, position, total, onOlder, onNewer }: { releaseId
           <Link2 />
         </Button>
       </div>
-      <h1 className="text-value-l font-semibold tracking-[-0.015em] text-fg-primary">{release.headline}</h1>
+      <h2 className="text-value-l font-semibold tracking-[-0.015em] text-fg-primary">{release.headline}</h2>
       <div className="flex flex-col gap-3">
         {paragraphs.length ? (
           paragraphs.map((p, i) => (
@@ -204,9 +204,9 @@ function StoryPane({ releaseId, position, total, onOlder, onNewer }: { releaseId
       {exposures.length > 0 && (
         <section className="rounded-md bg-canvas-subtle p-4" aria-labelledby="reaction-title">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="reaction-title" className="text-h3 font-semibold text-fg-primary">
+            <h3 id="reaction-title" className="text-h3 font-semibold text-fg-primary">
               What the market did
-            </h2>
+            </h3>
             <span className="text-caption text-fg-muted">Observed after release · not a forecast</span>
           </div>
           <ul className="mt-3 flex flex-col gap-3">

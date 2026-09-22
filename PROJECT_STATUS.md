@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-09-22 · branch `ui-c4-premium-fintech` · Phase 1 prototype + C4 “Premium Fintech” UI implementation (Figma file `uKRafZUOQb1V0sjxabddJW`, page 43:2)_
+_Last updated: 2026-09-23 · branch `ui-c4-premium-fintech` · Phase 1 prototype + C4 “Premium Fintech” UI (Figma file `uKRafZUOQb1V0sjxabddJW`, page 43:2) + a C4.1 hardening, QA and polish pass_
 
 Finance Club Stock Market Simulation Platform. **Phase 1 = frontend prototype + mock domain logic only.** It has no database, auth, backend APIs, WebSockets or market data.
 
@@ -14,6 +14,8 @@ npm run lint
 npm run typecheck
 npm run build
 ```
+
+Start at **http://localhost:3000/demo** and press **Load mid-event demo**: it replays the briefing and Round 1 through the normal commands (three stories, 19 settled trades), so the standings, tape, charts and audit log have real history the moment you open a screen. **Reset demo event** puts it back to a fresh pre-event state.
 
 Start at **http://localhost:3000/demo** and use the buttons to open the host console, Team Alpha, Team Beta and the projector in separate tabs. All tabs must be in the **same browser profile**, because they share localStorage and BroadcastChannel.
 
@@ -62,10 +64,11 @@ components/
   entry/              Join form, team login, demo launcher
 lib/
   domain/             Pure TypeScript domain logic (no React) + unit tests
-  mock/               PHASE 1 MOCK BACKEND: store, commands, selectors, hooks, session, runtime, exports + workflow tests
+  mock/               PHASE 1 MOCK BACKEND: store, commands, selectors, hooks, session, runtime, exports, demo-story
+                      (replays a briefing + Round 1 through the normal commands for the launcher) + workflow tests
   navigation.ts, format.ts, theme.ts, toast.ts, site.ts, utils.ts
 data/                 Scenario configs (FINSIM26 custom + real-simulated), templates, company catalogue, history generator
-scripts/              browser-smoke.mjs (CDP cross-window smoke test)
+scripts/              cdp.mjs (shared CDP driver), browser-smoke.mjs (full event run), route-audit.mjs (route × viewport sweep)
 ```
 
 ### Domain layer (`lib/domain`)
@@ -146,6 +149,41 @@ C4 implementation (branch `ui-c4-premium-fintech`):
 - [x] `ui: implement C4 projector controller` · `…projector stage`
 - [x] `a11y: fix contrast and tablist semantics found by Lighthouse` · `ui: host strip usable at phone width (visual QA)` · `test: shared leaderboard ranks`
 
+C4.1 hardening and QA pass (2026-09-23):
+
+- [x] `a11y: chart table view, spoken deltas, ticker under reduced motion`
+- [x] `fix: readable round chart early in a round, consistent volume units`
+- [x] `feat: mid-event demo for the launcher`
+- [x] `fix: tappable inline links on phones, focus returns after ⌘K`
+- [x] `fix: projector leaderboard fits the stage with a large field`
+- [x] `fix: sr-only chart table no longer widens the page; 24px switches on touch`
+- [x] `a11y: reach AA on gain/loss chips, stage badge and projector tiles`
+- [x] `test: rewrite the browser smoke run for the C4 UI`
+- [x] `ui: show the selected option's hint on select triggers; sync chart fallbacks`
+
+## Browser QA tooling
+
+Both scripts drive a headless Chrome over CDP through `scripts/cdp.mjs`; neither needs extra dependencies.
+
+```bash
+npm run build && npx next start -p 3100
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --remote-debugging-port=9333 --user-data-dir=/tmp/finsim-smoke about:blank
+node scripts/route-audit.mjs audit-output     # every route × viewport, plus every projector scene × resolution
+node scripts/browser-smoke.mjs smoke-output   # a full event run in four tabs
+```
+
+- **`route-audit.mjs`** walks all 31 routes at 1440/390/320 and all 9 projector scenes at 1920×1080, 1366×768 and 2560×1440, checking render, horizontal overflow, one `<h1>`, `NaN`/`undefined`/`Infinity` text, sub-11px text, sub-24px tap targets, broken images, titles and console output.
+- **`browser-smoke.mjs`** resets the demo, takes it live from the Live Control Strip, signs two teams in, and covers propose → counter → settle, two simultaneous accepts, a news release reaching teams and the projector, freeze holding the random-news countdown, Take/auto-rotate on the projector, mobile overflow and ledger reconciliation.
+
+## Verification (C4.1, 2026-09-23)
+
+- `npm run test`: 77 tests · `npm run lint`, `npm run typecheck`, `npm run build`: clean
+- `node scripts/route-audit.mjs`: **0 findings, 0 console errors** across 31 routes × 3 viewports and 9 scenes × 3 resolutions
+- `node scripts/browser-smoke.mjs`: **71/71 checks, 0 console errors**
+- Lighthouse (desktop snapshot) **accessibility 100** on participant dashboard, trade, markets, host control room, news desk, projector controller and join; best practices and SEO 100
+- Large-data pass (50 teams, 20 stocks, 50 news, 120 proposals, applied in the browser only): tables, filters and sticky headers hold; the projector leaderboard caps rows and summarises the rest
+- Performance: CLS 0.00, ~730 DOM nodes on the participant dashboard, no long tasks flagged
+
 ## Verification (C4, 2026-09-22)
 
 - `npm run test`: 77 tests pass (new: counter-offers 4, monitoring 4, news scheduling 6, random news during freeze 3, setup checks 3, shared ranks 3)
@@ -205,6 +243,12 @@ C4 implementation (branch `ui-c4-premium-fintech`):
 - **Onboarding:** a 3-step dialog shown once per team per event per browser (`localStorage`).
 
 ## Known issues / TODO
+
+C4.1-specific:
+
+- **Demo tail varies:** the mid-event demo sizes trades against each team's available cash, so the bottom of the table is sometimes slightly positive rather than negative. The spread and the ordering are always real.
+- **Projector with a very large field:** above ~36 teams the stage shows the top rows and a "+ N more teams" line; the full table stays on team screens and the host leaderboard.
+- **Long headlines:** the projector trims after about three lines (~130 characters); the news editor warns past that point.
 
 C4-specific:
 
