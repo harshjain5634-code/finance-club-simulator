@@ -36,6 +36,8 @@ export type EventRules = {
   proposalExpirySeconds: number;
   maxOpenOutgoingProposals: number;
   tickSize: Paise;
+  /** Monitoring only: trades at or above this value are flagged for the host. Never blocks or requires approval. Default ₹50,000. */
+  highValueThreshold?: Paise | null;
 };
 
 export type LeaderboardSettings = {

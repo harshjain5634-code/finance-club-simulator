@@ -638,11 +638,9 @@ function useHostShortcuts({ state, openPalette, openHelp }: { state: EventState;
 
       if (Date.now() - goPending.current < 1500) {
         goPending.current = 0;
+        e.preventDefault();
         const target = GOTO_KEYS[key];
-        if (target) {
-          e.preventDefault();
-          router.push(`${base}${target.path}`);
-        }
+        if (target) router.push(`${base}${target.path}`);
         return;
       }
       if (e.key === "?") {
