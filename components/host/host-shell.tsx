@@ -263,7 +263,7 @@ function LiveControlStrip({ state, onPalette }: { state: EventState; onPalette: 
     <section
       aria-label="Live controls"
       className={cn(
-        "sticky top-0 z-30 border-b bg-surface",
+        "top-0 z-30 border-b bg-surface lg:sticky",
         event.tradingFrozen ? "border-warning/60 shadow-[inset_0_-2px_0_var(--color-warning)]" : "border-border",
       )}
     >
@@ -273,7 +273,7 @@ function LiveControlStrip({ state, onPalette }: { state: EventState; onPalette: 
         <TrackBlock state={state} />
         <Divider />
         <ProjectorBlock state={state} />
-        <div className="ml-auto">
+        <div className="w-full sm:ml-auto sm:w-auto">
           <StripActions state={state} onPalette={onPalette} />
         </div>
       </div>
@@ -449,7 +449,7 @@ function StripActions({ state, onPalette }: { state: EventState; onPalette: () =
   }
 
   return (
-    <div className="grid grid-cols-[auto_auto] gap-2">
+    <div className="grid grid-cols-2 gap-2 max-sm:[&>button]:w-full max-sm:[&>div:first-of-type>button]:w-full max-sm:[&_kbd]:hidden sm:grid-cols-[auto_auto]">
       <Button variant="primary" shortcut="N" onClick={() => run("releaseNext")} disabled={!available("releaseNext")} title={available("releaseNext") ? undefined : "No story is ready to release"}>
         <Zap className="size-4" />
         Release next story
